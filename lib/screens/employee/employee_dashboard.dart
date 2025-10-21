@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../leave_request_screen.dart';
-import '../login_screen.dart';
 
 class EmployeeDashboard extends StatelessWidget {
   const EmployeeDashboard({super.key});
@@ -24,13 +22,7 @@ class EmployeeDashboard extends StatelessWidget {
                 icon: const Icon(Icons.logout),
                 onPressed: () async {
                   await authProvider.logout();
-                  if (context.mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => const LoginScreen(),
-                      ),
-                    );
-                  }
+                  // Navigation is handled by AuthWrapper
                 },
               ),
             ],
@@ -62,7 +54,7 @@ class EmployeeDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildPersonalInfoCard(BuildContext context, User user) {
+  Widget _buildPersonalInfoCard(BuildContext context, user) {
     return Card(
       elevation: 4,
       child: Padding(
@@ -97,11 +89,15 @@ class EmployeeDashboard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        user.department,
+                        user.departments.isNotEmpty
+                            ? user.departments.first.departmentName
+                            : 'Chưa xác định',
                         style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                       ),
                       Text(
-                        'Nhân viên',
+                        user.departments.isNotEmpty
+                            ? user.departments.first.positionName
+                            : 'Nhân viên',
                         style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                       ),
                     ],
@@ -115,72 +111,121 @@ class EmployeeDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildLeaveStatsCard(BuildContext context, User user) {
-    final usedDays = user.annualLeaveDays - user.remainingLeaveDays;
-    final percentage =
-        user.annualLeaveDays > 0 ? usedDays / user.annualLeaveDays : 0.0;
-
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Thống kê nghỉ phép năm',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            // Thanh tiến trình
-            LinearProgressIndicator(
-              value: percentage,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(
-                percentage > 0.8 ? Colors.red : Colors.green,
+  Widget _buildLeaveStatsCard(BuildContext context, user) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future:
+          Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          ).getMyLeaveStatistics(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Card(
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Thống kê nghỉ phép năm',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  const CircularProgressIndicator(),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
+          );
+        }
 
-            Text(
-              'Đã sử dụng: $usedDays/${user.annualLeaveDays} ngày (${(percentage * 100).toStringAsFixed(1)}%)',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 16),
+        final stats = snapshot.data ?? {};
+        final totalDaysApproved = (stats['TotalDaysApproved'] ?? 0).toDouble();
 
-            // Thông tin chi tiết
-            Row(
+        // Giả sử mỗi năm có 12 ngày phép (có thể lấy từ API sau)
+        final annualLeaveDays = 12.0;
+        final remainingDays = annualLeaveDays - totalDaysApproved;
+        final percentage =
+            annualLeaveDays > 0 ? totalDaysApproved / annualLeaveDays : 0.0;
+
+        return Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _buildStatItem(
-                    'Tổng ngày nghỉ',
-                    '${user.annualLeaveDays}',
-                    Icons.calendar_today,
-                    Colors.blue,
+                const Text(
+                  'Thống kê nghỉ phép năm',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                // Thanh tiến trình
+                LinearProgressIndicator(
+                  value: percentage,
+                  backgroundColor: Colors.grey[300],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    percentage > 0.8 ? Colors.red : Colors.green,
                   ),
                 ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Đã sử dụng',
-                    '$usedDays',
-                    Icons.check_circle,
-                    Colors.orange,
-                  ),
+                const SizedBox(height: 8),
+
+                Text(
+                  'Đã sử dụng: ${totalDaysApproved.toInt()}/${annualLeaveDays.toInt()} ngày (${(percentage * 100).toStringAsFixed(1)}%)',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Còn lại',
-                    '${user.remainingLeaveDays}',
-                    Icons.schedule,
-                    Colors.green,
-                  ),
+                const SizedBox(height: 16),
+
+                // Thông tin chi tiết
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    SizedBox(
+                      width:
+                          MediaQuery.of(context).size.width > 600
+                              ? null
+                              : (MediaQuery.of(context).size.width - 48) / 2,
+                      child: _buildStatItem(
+                        'Tổng ngày nghỉ',
+                        '${annualLeaveDays.toInt()}',
+                        Icons.calendar_today,
+                        Colors.blue,
+                      ),
+                    ),
+                    SizedBox(
+                      width:
+                          MediaQuery.of(context).size.width > 600
+                              ? null
+                              : (MediaQuery.of(context).size.width - 48) / 2,
+                      child: _buildStatItem(
+                        'Đã sử dụng',
+                        '${totalDaysApproved.toInt()}',
+                        Icons.check_circle,
+                        Colors.orange,
+                      ),
+                    ),
+                    SizedBox(
+                      width:
+                          MediaQuery.of(context).size.width > 600
+                              ? null
+                              : (MediaQuery.of(context).size.width - 48) / 2,
+                      child: _buildStatItem(
+                        'Còn lại',
+                        '${remainingDays.toInt()}',
+                        Icons.schedule,
+                        Colors.green,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 

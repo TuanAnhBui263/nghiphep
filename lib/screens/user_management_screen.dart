@@ -1,7 +1,5 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
-import '../models/user.dart';
-import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 import 'add_user_screen.dart';
 
 class UserManagementScreen extends StatefulWidget {
@@ -12,9 +10,55 @@ class UserManagementScreen extends StatefulWidget {
 }
 
 class _UserManagementScreenState extends State<UserManagementScreen> {
-  String _selectedDepartment = 'Tất cả';
-  UserRole? _selectedRole;
+  int? _selectedDepartmentId;
+  String? _selectedRole;
   String _searchQuery = '';
+  List<Map<String, dynamic>> _users = [];
+  List<Map<String, dynamic>> _departments = [];
+  bool _isLoading = true;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadData();
+  }
+
+  Future<void> _loadData() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Load departments for dropdown
+      final departments = await ApiService.getDepartmentsForDropdown();
+
+      // Load users with department filtering
+      final users = await ApiService.getEmployees(
+        pageNumber: 1,
+        pageSize: 1000, // Load all users for now
+        departmentId: _selectedDepartmentId,
+        searchTerm: _searchQuery.isNotEmpty ? _searchQuery : null,
+      );
+
+      setState(() {
+        _departments = departments;
+        _users = List<Map<String, dynamic>>.from(users['items'] ?? []);
+        _isLoading = false;
+      });
+    } catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Lỗi khi tải dữ liệu: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -24,53 +68,50 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
         backgroundColor: Theme.of(context).primaryColor,
         foregroundColor: Colors.white,
         actions: [
+          IconButton(icon: const Icon(Icons.refresh), onPressed: _loadData),
           IconButton(
             icon: const Icon(Icons.add),
             onPressed: () {
-              Navigator.of(context).push(
-                MaterialPageRoute(builder: (context) => const AddUserScreen()),
-              );
+              Navigator.of(context)
+                  .push(
+                    MaterialPageRoute(
+                      builder: (context) => const AddUserScreen(),
+                    ),
+                  )
+                  .then((_) => _loadData()); // Reload after adding user
             },
           ),
         ],
       ),
-      body: Consumer<AuthProvider>(
-        builder: (context, authProvider, child) {
-          final allUsers = authProvider.getAllUsers();
-          final filteredUsers = _filterUsers(allUsers);
+      body:
+          _isLoading
+              ? const Center(child: CircularProgressIndicator())
+              : Column(
+                children: [
+                  // Bộ lọc
+                  _buildFilterSection(context),
 
-          return Column(
-            children: [
-              // Bộ lọc
-              _buildFilterSection(context, allUsers),
-
-              // Danh sách người dùng
-              Expanded(
-                child:
-                    filteredUsers.isEmpty
-                        ? _buildEmptyState()
-                        : ListView.builder(
-                          padding: const EdgeInsets.all(16),
-                          itemCount: filteredUsers.length,
-                          itemBuilder: (context, index) {
-                            final user = filteredUsers[index];
-                            return _buildUserCard(context, user, authProvider);
-                          },
-                        ),
+                  // Danh sách người dùng
+                  Expanded(child: _buildUsersList()),
+                ],
               ),
-            ],
-          );
-        },
-      ),
     );
   }
 
-  Widget _buildFilterSection(BuildContext context, List<User> allUsers) {
-    final departments = [
-      'Tất cả',
-      ...allUsers.map((u) => u.department).toSet(),
-    ];
+  Widget _buildUsersList() {
+    return _users.isEmpty
+        ? _buildEmptyState()
+        : ListView.builder(
+          padding: const EdgeInsets.all(16),
+          itemCount: _users.length,
+          itemBuilder: (context, index) {
+            final user = _users[index];
+            return _buildUserCard(context, user);
+          },
+        );
+  }
 
+  Widget _buildFilterSection(BuildContext context) {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
@@ -94,6 +135,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               setState(() {
                 _searchQuery = value;
               });
+              _loadData(); // Reload with new search term
             },
           ),
           const SizedBox(height: 12),
@@ -103,8 +145,8 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             children: [
               // Lọc theo phòng ban
               Expanded(
-                child: DropdownButtonFormField<String>(
-                  value: _selectedDepartment,
+                child: DropdownButtonFormField<int?>(
+                  value: _selectedDepartmentId,
                   decoration: InputDecoration(
                     labelText: 'Phòng ban',
                     border: OutlineInputBorder(
@@ -113,14 +155,25 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     filled: true,
                     fillColor: Colors.white,
                   ),
-                  items:
-                      departments.map((dept) {
-                        return DropdownMenuItem(value: dept, child: Text(dept));
-                      }).toList(),
+                  items: [
+                    const DropdownMenuItem<int?>(
+                      value: null,
+                      child: Text('Tất cả'),
+                    ),
+                    ..._departments.map((dept) {
+                      return DropdownMenuItem<int?>(
+                        value: dept['id'],
+                        child: Text(
+                          dept['displayText'] ?? dept['departmentName'],
+                        ),
+                      );
+                    }).toList(),
+                  ],
                   onChanged: (value) {
                     setState(() {
-                      _selectedDepartment = value!;
+                      _selectedDepartmentId = value;
                     });
+                    _loadData(); // Reload with new department filter
                   },
                 ),
               ),
@@ -128,7 +181,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
 
               // Lọc theo vai trò
               Expanded(
-                child: DropdownButtonFormField<UserRole?>(
+                child: DropdownButtonFormField<String?>(
                   value: _selectedRole,
                   decoration: InputDecoration(
                     labelText: 'Vai trò',
@@ -140,29 +193,24 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                   ),
                   items: [
                     const DropdownMenuItem(value: null, child: Text('Tất cả')),
-                    ...UserRole.values.map((role) {
-                      String label;
-                      switch (role) {
-                        case UserRole.employee:
-                          label = 'Nhân viên';
-                          break;
-                        case UserRole.teamLeader:
-                          label = 'Trưởng phòng';
-                          break;
-                        case UserRole.deputyLeader:
-                          label = 'Phó phòng';
-                          break;
-                        case UserRole.admin:
-                          label = 'Admin';
-                          break;
-                      }
-                      return DropdownMenuItem(value: role, child: Text(label));
-                    }),
+                    const DropdownMenuItem(
+                      value: 'Admin',
+                      child: Text('Admin'),
+                    ),
+                    const DropdownMenuItem(
+                      value: 'Manager',
+                      child: Text('Quản lý'),
+                    ),
+                    const DropdownMenuItem(
+                      value: 'Employee',
+                      child: Text('Nhân viên'),
+                    ),
                   ],
                   onChanged: (value) {
                     setState(() {
                       _selectedRole = value;
                     });
+                    _loadData(); // Reload with new role filter
                   },
                 ),
               ),
@@ -198,11 +246,10 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Widget _buildUserCard(
-    BuildContext context,
-    User user,
-    AuthProvider authProvider,
-  ) {
+  Widget _buildUserCard(BuildContext context, Map<String, dynamic> user) {
+    final roles = (user['roles'] as List?) ?? [];
+    final primaryRole = roles.isNotEmpty ? roles.first : 'Employee';
+
     return Card(
       elevation: 2,
       margin: const EdgeInsets.only(bottom: 12),
@@ -215,9 +262,9 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
               children: [
                 CircleAvatar(
                   radius: 25,
-                  backgroundColor: _getRoleColor(user.role),
+                  backgroundColor: _getRoleColor(primaryRole),
                   child: Text(
-                    user.fullName.split(' ').last[0].toUpperCase(),
+                    (user['fullName'] ?? 'U').split(' ').last[0].toUpperCase(),
                     style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.bold,
@@ -231,14 +278,14 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
-                        user.fullName,
+                        user['fullName'] ?? 'Chưa có tên',
                         style: const TextStyle(
                           fontSize: 16,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                       Text(
-                        user.email,
+                        user['email'] ?? 'Chưa có email',
                         style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                       ),
                       Row(
@@ -250,22 +297,22 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                             ),
                             decoration: BoxDecoration(
                               color: _getRoleColor(
-                                user.role,
+                                primaryRole,
                               ).withValues(alpha: 0.2),
                               borderRadius: BorderRadius.circular(12),
                             ),
                             child: Text(
-                              _getRoleText(user.role),
+                              _getRoleText(primaryRole),
                               style: TextStyle(
                                 fontSize: 12,
-                                color: _getRoleColor(user.role),
+                                color: _getRoleColor(primaryRole),
                                 fontWeight: FontWeight.bold,
                               ),
                             ),
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            user.department,
+                            user['primaryDepartment'] ?? 'Chưa xác định',
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey[500],
@@ -283,7 +330,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                         _editUser(context, user);
                         break;
                       case 'delete':
-                        _deleteUser(context, user, authProvider);
+                        _deleteUser(context, user);
                         break;
                     }
                   },
@@ -319,24 +366,27 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey[50],
+                color: Colors.blue[50],
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Row(
                 children: [
                   Expanded(
-                    child: _buildLeaveInfo('Tổng', '${user.annualLeaveDays}'),
+                    child: _buildLeaveInfo(
+                      'Tổng',
+                      '${user['remainingLeaveDays'] != null ? (12.0 + user['remainingLeaveDays']).toInt() : 12}',
+                    ),
                   ),
                   Expanded(
                     child: _buildLeaveInfo(
                       'Đã dùng',
-                      '${user.annualLeaveDays - user.remainingLeaveDays}',
+                      '${user['remainingLeaveDays'] != null ? (12.0 - user['remainingLeaveDays']).toInt() : 0}',
                     ),
                   ),
                   Expanded(
                     child: _buildLeaveInfo(
                       'Còn lại',
-                      '${user.remainingLeaveDays}',
+                      '${user['remainingLeaveDays']?.toInt() ?? 12}',
                     ),
                   ),
                 ],
@@ -360,73 +410,47 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
     );
   }
 
-  Color _getRoleColor(UserRole role) {
+  Color _getRoleColor(String role) {
     switch (role) {
-      case UserRole.employee:
+      case 'Employee':
         return Colors.blue;
-      case UserRole.teamLeader:
+      case 'Manager':
         return Colors.orange;
-      case UserRole.deputyLeader:
-        return Colors.purple;
-      case UserRole.admin:
+      case 'Admin':
         return Colors.red;
+      default:
+        return Colors.grey;
     }
   }
 
-  String _getRoleText(UserRole role) {
+  String _getRoleText(String role) {
     switch (role) {
-      case UserRole.employee:
+      case 'Employee':
         return 'Nhân viên';
-      case UserRole.teamLeader:
-        return 'Trưởng phòng';
-      case UserRole.deputyLeader:
-        return 'Phó phòng';
-      case UserRole.admin:
+      case 'Manager':
+        return 'Quản lý';
+      case 'Admin':
         return 'Admin';
+      default:
+        return 'Chưa xác định';
     }
   }
 
-  List<User> _filterUsers(List<User> users) {
-    return users.where((user) {
-      // Lọc theo phòng ban
-      if (_selectedDepartment != 'Tất cả' &&
-          user.department != _selectedDepartment) {
-        return false;
-      }
-
-      // Lọc theo vai trò
-      if (_selectedRole != null && user.role != _selectedRole) {
-        return false;
-      }
-
-      // Lọc theo tìm kiếm
-      if (_searchQuery.isNotEmpty) {
-        final query = _searchQuery.toLowerCase();
-        if (!user.fullName.toLowerCase().contains(query) &&
-            !user.email.toLowerCase().contains(query)) {
-          return false;
-        }
-      }
-
-      return true;
-    }).toList();
-  }
-
-  void _editUser(BuildContext context, User user) {
+  void _editUser(BuildContext context, Map<String, dynamic> user) {
     // TODO: Navigate to edit user screen
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(content: Text('Chức năng chỉnh sửa đang phát triển')),
     );
   }
 
-  void _deleteUser(BuildContext context, User user, AuthProvider authProvider) {
+  void _deleteUser(BuildContext context, Map<String, dynamic> user) {
     showDialog(
       context: context,
       builder:
           (context) => AlertDialog(
             title: const Text('Xác nhận xóa'),
             content: Text(
-              'Bạn có chắc chắn muốn xóa người dùng ${user.fullName}?',
+              'Bạn có chắc chắn muốn xóa người dùng ${user['fullName'] ?? 'này'}?',
             ),
             actions: [
               TextButton(
@@ -437,11 +461,12 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                 onPressed: () async {
                   Navigator.of(context).pop();
                   try {
-                    await authProvider.deleteUser(user.id);
+                    await ApiService.deactivateEmployee(user['id'] ?? 0);
+                    await _loadData(); // Reload the list
                     if (context.mounted) {
                       ScaffoldMessenger.of(context).showSnackBar(
                         const SnackBar(
-                          content: Text('Đã xóa người dùng thành công'),
+                          content: Text('Đã vô hiệu hóa người dùng thành công'),
                           backgroundColor: Colors.green,
                         ),
                       );
@@ -451,7 +476,7 @@ class _UserManagementScreenState extends State<UserManagementScreen> {
                       ScaffoldMessenger.of(context).showSnackBar(
                         SnackBar(
                           content: Text(
-                            'Lỗi khi xóa người dùng: ${e.toString()}',
+                            'Lỗi khi vô hiệu hóa người dùng: ${e.toString()}',
                           ),
                           backgroundColor: Colors.red,
                         ),

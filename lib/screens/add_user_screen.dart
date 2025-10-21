@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../models/user.dart';
 import '../providers/auth_provider.dart';
 
 class AddUserScreen extends StatefulWidget {
@@ -12,36 +11,30 @@ class AddUserScreen extends StatefulWidget {
 
 class _AddUserScreenState extends State<AddUserScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   final _fullNameController = TextEditingController();
-  final _emailController = TextEditingController();
   final _phoneController = TextEditingController();
-  final _departmentController = TextEditingController();
-  final _workYearsController = TextEditingController();
 
-  UserRole _selectedRole = UserRole.employee;
-  String? _selectedManagerId;
+  String _selectedRole = 'Employee';
+  String _selectedDepartment = 'Phòng Hành Chính';
   bool _isLoading = false;
 
   final List<String> _departments = [
-    'IT',
-    'Nhân sự',
-    'Kế toán',
-    'Marketing',
-    'Kinh doanh',
-    'Sản xuất',
+    'Phòng Hành Chính',
+    'Phòng Kế Toán',
+    'Ban Giám Đốc - Trưởng Thuế TP.HCM',
+    'Ban Giám Đốc - Phó Trưởng Thuế TP.HCM',
   ];
+
+  final List<String> _roles = ['Employee', 'Manager', 'Admin'];
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     _fullNameController.dispose();
-    _emailController.dispose();
     _phoneController.dispose();
-    _departmentController.dispose();
-    _workYearsController.dispose();
     super.dispose();
   }
 
@@ -54,27 +47,18 @@ class _AddUserScreenState extends State<AddUserScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final workYears = int.parse(_workYearsController.text);
-      final annualLeaveDays = User.calculateAnnualLeaveDays(workYears);
 
-      final newUser = User(
-        id: DateTime.now().millisecondsSinceEpoch.toString(),
-        username: _usernameController.text,
-        password: _passwordController.text,
-        fullName: _fullNameController.text,
-        email: _emailController.text,
-        phone: _phoneController.text,
-        department: _departmentController.text,
-        role: _selectedRole,
-        workYears: workYears,
-        annualLeaveDays: annualLeaveDays,
-        remainingLeaveDays: annualLeaveDays,
-        managerId: _selectedManagerId,
-        createdAt: DateTime.now(),
-        updatedAt: DateTime.now(),
-      );
+      final userData = {
+        'email': _emailController.text,
+        'password': _passwordController.text,
+        'fullName': _fullNameController.text,
+        'phoneNumber': _phoneController.text,
+        'role': _selectedRole,
+        'department': _selectedDepartment,
+        'isActive': true,
+      };
 
-      await authProvider.createUser(newUser);
+      await authProvider.createUser(userData);
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -121,15 +105,18 @@ class _AddUserScreenState extends State<AddUserScreen> {
               // Thông tin cơ bản
               _buildSectionCard('Thông tin cơ bản', [
                 _buildTextField(
-                  controller: _usernameController,
-                  label: 'Tên đăng nhập',
-                  icon: Icons.person,
+                  controller: _emailController,
+                  label: 'Email',
+                  icon: Icons.email,
+                  keyboardType: TextInputType.emailAddress,
                   validator: (value) {
                     if (value == null || value.isEmpty) {
-                      return 'Vui lòng nhập tên đăng nhập';
+                      return 'Vui lòng nhập email';
                     }
-                    if (value.length < 3) {
-                      return 'Tên đăng nhập phải có ít nhất 3 ký tự';
+                    if (!RegExp(
+                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                    ).hasMatch(value)) {
+                      return 'Email không hợp lệ';
                     }
                     return null;
                   },
@@ -166,23 +153,6 @@ class _AddUserScreenState extends State<AddUserScreen> {
               // Thông tin liên hệ
               _buildSectionCard('Thông tin liên hệ', [
                 _buildTextField(
-                  controller: _emailController,
-                  label: 'Email',
-                  icon: Icons.email,
-                  keyboardType: TextInputType.emailAddress,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Vui lòng nhập email';
-                    }
-                    if (!RegExp(
-                      r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
-                    ).hasMatch(value)) {
-                      return 'Email không hợp lệ';
-                    }
-                    return null;
-                  },
-                ),
-                _buildTextField(
                   controller: _phoneController,
                   label: 'Số điện thoại',
                   icon: Icons.phone,
@@ -202,75 +172,55 @@ class _AddUserScreenState extends State<AddUserScreen> {
 
               // Thông tin công việc
               _buildSectionCard('Thông tin công việc', [
-                _buildDropdownField<String>(
-                  label: 'Phòng ban',
-                  value:
-                      _departmentController.text.isEmpty
-                          ? null
-                          : _departmentController.text,
-                  items: _departments,
-                  onChanged: (value) {
-                    setState(() {
-                      _departmentController.text = value!;
-                    });
-                  },
-                  itemBuilder: (dept) => Text(dept),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Vui lòng chọn phòng ban';
-                    }
-                    return null;
-                  },
-                ),
                 _buildDropdownField(
-                  label: 'Vai trò',
                   value: _selectedRole,
-                  items: UserRole.values,
+                  label: 'Vai trò',
+                  icon: Icons.work,
+                  items:
+                      _roles.map((role) {
+                        String displayName;
+                        switch (role) {
+                          case 'Employee':
+                            displayName = 'Nhân viên';
+                            break;
+                          case 'Manager':
+                            displayName = 'Quản lý';
+                            break;
+                          case 'Admin':
+                            displayName = 'Admin';
+                            break;
+                          default:
+                            displayName = role;
+                        }
+                        return DropdownMenuItem(
+                          value: role,
+                          child: Text(displayName),
+                        );
+                      }).toList(),
                   onChanged: (value) {
                     setState(() {
                       _selectedRole = value!;
                     });
                   },
-                  itemBuilder: (role) {
-                    String label;
-                    switch (role) {
-                      case UserRole.employee:
-                        label = 'Nhân viên';
-                        break;
-                      case UserRole.teamLeader:
-                        label = 'Trưởng phòng';
-                        break;
-                      case UserRole.deputyLeader:
-                        label = 'Phó phòng';
-                        break;
-                      case UserRole.admin:
-                        label = 'Admin';
-                        break;
-                    }
-                    return Text(label);
+                ),
+                _buildDropdownField(
+                  value: _selectedDepartment,
+                  label: 'Phòng ban',
+                  icon: Icons.business,
+                  items:
+                      _departments.map((dept) {
+                        return DropdownMenuItem(value: dept, child: Text(dept));
+                      }).toList(),
+                  onChanged: (value) {
+                    setState(() {
+                      _selectedDepartment = value!;
+                    });
                   },
                 ),
-                _buildTextField(
-                  controller: _workYearsController,
-                  label: 'Số năm công tác',
-                  icon: Icons.work,
-                  keyboardType: TextInputType.number,
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Vui lòng nhập số năm công tác';
-                    }
-                    final years = int.tryParse(value);
-                    if (years == null || years < 0) {
-                      return 'Số năm công tác phải là số dương';
-                    }
-                    return null;
-                  },
-                ),
-                _buildManagerDropdown(),
               ]),
               const SizedBox(height: 24),
 
-              // Nút thêm
+              // Nút thêm người dùng
               SizedBox(
                 width: double.infinity,
                 height: 50,
@@ -285,7 +235,16 @@ class _AddUserScreenState extends State<AddUserScreen> {
                   ),
                   child:
                       _isLoading
-                          ? const CircularProgressIndicator(color: Colors.white)
+                          ? const SizedBox(
+                            width: 20,
+                            height: 20,
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              valueColor: AlwaysStoppedAnimation<Color>(
+                                Colors.white,
+                              ),
+                            ),
+                          )
                           : const Text(
                             'Thêm người dùng',
                             style: TextStyle(
@@ -304,7 +263,7 @@ class _AddUserScreenState extends State<AddUserScreen> {
 
   Widget _buildSectionCard(String title, List<Widget> children) {
     return Card(
-      elevation: 4,
+      elevation: 2,
       child: Padding(
         padding: const EdgeInsets.all(16),
         child: Column(
@@ -348,76 +307,27 @@ class _AddUserScreenState extends State<AddUserScreen> {
     );
   }
 
-  Widget _buildDropdownField<T>({
+  Widget _buildDropdownField({
+    required String value,
     required String label,
-    required T? value,
-    required List<T> items,
-    required void Function(T?) onChanged,
-    required Widget Function(T) itemBuilder,
-    String? Function(T?)? validator,
+    required IconData icon,
+    required List<DropdownMenuItem<String>> items,
+    required void Function(String?) onChanged,
   }) {
     return Padding(
       padding: const EdgeInsets.only(bottom: 16),
-      child: DropdownButtonFormField<T>(
+      child: DropdownButtonFormField<String>(
         value: value,
         decoration: InputDecoration(
           labelText: label,
+          prefixIcon: Icon(icon),
           border: OutlineInputBorder(borderRadius: BorderRadius.circular(8)),
           filled: true,
           fillColor: Colors.grey[50],
         ),
-        items:
-            items.map((item) {
-              return DropdownMenuItem(value: item, child: itemBuilder(item));
-            }).toList(),
+        items: items,
         onChanged: onChanged,
-        validator: validator,
       ),
-    );
-  }
-
-  Widget _buildManagerDropdown() {
-    return Consumer<AuthProvider>(
-      builder: (context, authProvider, child) {
-        final managers =
-            authProvider
-                .getAllUsers()
-                .where(
-                  (user) =>
-                      user.role == UserRole.teamLeader ||
-                      user.role == UserRole.deputyLeader,
-                )
-                .toList();
-
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 16),
-          child: DropdownButtonFormField<String>(
-            value: _selectedManagerId,
-            decoration: InputDecoration(
-              labelText: 'Người quản lý trực tiếp',
-              border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(8),
-              ),
-              filled: true,
-              fillColor: Colors.grey[50],
-            ),
-            items: [
-              const DropdownMenuItem(value: null, child: Text('Không có')),
-              ...managers.map((manager) {
-                return DropdownMenuItem(
-                  value: manager.id,
-                  child: Text(manager.fullName),
-                );
-              }),
-            ],
-            onChanged: (value) {
-              setState(() {
-                _selectedManagerId = value;
-              });
-            },
-          ),
-        );
-      },
     );
   }
 }

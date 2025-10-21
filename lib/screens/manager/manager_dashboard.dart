@@ -1,9 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import '../../models/user.dart';
 import '../../providers/auth_provider.dart';
 import '../approval_screen.dart';
-import '../login_screen.dart';
 
 class ManagerDashboard extends StatelessWidget {
   const ManagerDashboard({super.key});
@@ -13,13 +11,10 @@ class ManagerDashboard extends StatelessWidget {
     return Consumer<AuthProvider>(
       builder: (context, authProvider, child) {
         final user = authProvider.currentUser!;
-        final subordinates = authProvider.getSubordinates(user.id);
 
         return Scaffold(
           appBar: AppBar(
-            title: Text(
-              'Dashboard ${user.role == UserRole.teamLeader ? 'Trưởng phòng' : 'Phó phòng'}',
-            ),
+            title: const Text('Dashboard Quản lý'),
             backgroundColor: Theme.of(context).primaryColor,
             foregroundColor: Colors.white,
             actions: [
@@ -27,13 +22,7 @@ class ManagerDashboard extends StatelessWidget {
                 icon: const Icon(Icons.logout),
                 onPressed: () async {
                   await authProvider.logout();
-                  if (context.mounted) {
-                    Navigator.of(context).pushReplacement(
-                      MaterialPageRoute(
-                        builder: (context) => const LoginScreen(),
-                      ),
-                    );
-                  }
+                  // Navigation is handled by AuthWrapper
                 },
               ),
             ],
@@ -55,10 +44,6 @@ class ManagerDashboard extends StatelessWidget {
                 _buildActionButtons(context),
                 const SizedBox(height: 16),
 
-                // Danh sách nhân viên dưới quyền
-                _buildSubordinatesCard(context, subordinates),
-                const SizedBox(height: 16),
-
                 // Đơn nghỉ phép chờ duyệt
                 _buildPendingApprovalsCard(context),
               ],
@@ -69,7 +54,7 @@ class ManagerDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildPersonalInfoCard(BuildContext context, User user) {
+  Widget _buildPersonalInfoCard(BuildContext context, user) {
     return Card(
       elevation: 4,
       child: Padding(
@@ -104,13 +89,15 @@ class ManagerDashboard extends StatelessWidget {
                         ),
                       ),
                       Text(
-                        user.department,
+                        user.departments.isNotEmpty
+                            ? user.departments.first.departmentName
+                            : 'Chưa xác định',
                         style: TextStyle(fontSize: 16, color: Colors.grey[600]),
                       ),
                       Text(
-                        user.role == UserRole.teamLeader
-                            ? 'Trưởng phòng'
-                            : 'Phó phòng',
+                        user.departments.isNotEmpty
+                            ? user.departments.first.positionName
+                            : 'Quản lý',
                         style: TextStyle(fontSize: 14, color: Colors.grey[500]),
                       ),
                     ],
@@ -124,72 +111,121 @@ class ManagerDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildLeaveStatsCard(BuildContext context, User user) {
-    final usedDays = user.annualLeaveDays - user.remainingLeaveDays;
-    final percentage =
-        user.annualLeaveDays > 0 ? usedDays / user.annualLeaveDays : 0.0;
-
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            const Text(
-              'Thống kê nghỉ phép năm',
-              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-            ),
-            const SizedBox(height: 16),
-
-            // Thanh tiến trình
-            LinearProgressIndicator(
-              value: percentage,
-              backgroundColor: Colors.grey[300],
-              valueColor: AlwaysStoppedAnimation<Color>(
-                percentage > 0.8 ? Colors.red : Colors.green,
+  Widget _buildLeaveStatsCard(BuildContext context, user) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future:
+          Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          ).getMyLeaveStatistics(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return Card(
+            elevation: 4,
+            child: Padding(
+              padding: const EdgeInsets.all(16),
+              child: Column(
+                children: [
+                  const Text(
+                    'Thống kê nghỉ phép năm',
+                    style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                  ),
+                  const SizedBox(height: 16),
+                  const CircularProgressIndicator(),
+                ],
               ),
             ),
-            const SizedBox(height: 8),
+          );
+        }
 
-            Text(
-              'Đã sử dụng: $usedDays/${user.annualLeaveDays} ngày (${(percentage * 100).toStringAsFixed(1)}%)',
-              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
-            ),
-            const SizedBox(height: 16),
+        final stats = snapshot.data ?? {};
+        final totalDaysApproved = (stats['TotalDaysApproved'] ?? 0).toDouble();
 
-            // Thông tin chi tiết
-            Row(
+        // Giả sử Manager có 16 ngày phép (có thể lấy từ API sau)
+        final annualLeaveDays = 16.0;
+        final remainingDays = annualLeaveDays - totalDaysApproved;
+        final percentage =
+            annualLeaveDays > 0 ? totalDaysApproved / annualLeaveDays : 0.0;
+
+        return Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: _buildStatItem(
-                    'Tổng ngày nghỉ',
-                    '${user.annualLeaveDays}',
-                    Icons.calendar_today,
-                    Colors.blue,
+                const Text(
+                  'Thống kê nghỉ phép năm',
+                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+                ),
+                const SizedBox(height: 16),
+
+                // Thanh tiến trình
+                LinearProgressIndicator(
+                  value: percentage,
+                  backgroundColor: Colors.grey[300],
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    percentage > 0.8 ? Colors.red : Colors.green,
                   ),
                 ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Đã sử dụng',
-                    '$usedDays',
-                    Icons.check_circle,
-                    Colors.orange,
-                  ),
+                const SizedBox(height: 8),
+
+                Text(
+                  'Đã sử dụng: ${totalDaysApproved.toInt()}/${annualLeaveDays.toInt()} ngày (${(percentage * 100).toStringAsFixed(1)}%)',
+                  style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+                  overflow: TextOverflow.ellipsis,
+                  maxLines: 2,
                 ),
-                Expanded(
-                  child: _buildStatItem(
-                    'Còn lại',
-                    '${user.remainingLeaveDays}',
-                    Icons.schedule,
-                    Colors.green,
-                  ),
+                const SizedBox(height: 16),
+
+                // Thông tin chi tiết
+                Wrap(
+                  spacing: 8,
+                  runSpacing: 8,
+                  children: [
+                    SizedBox(
+                      width:
+                          MediaQuery.of(context).size.width > 600
+                              ? null
+                              : (MediaQuery.of(context).size.width - 48) / 2,
+                      child: _buildStatItem(
+                        'Tổng ngày nghỉ',
+                        '${annualLeaveDays.toInt()}',
+                        Icons.calendar_today,
+                        Colors.blue,
+                      ),
+                    ),
+                    SizedBox(
+                      width:
+                          MediaQuery.of(context).size.width > 600
+                              ? null
+                              : (MediaQuery.of(context).size.width - 48) / 2,
+                      child: _buildStatItem(
+                        'Đã sử dụng',
+                        '${totalDaysApproved.toInt()}',
+                        Icons.check_circle,
+                        Colors.orange,
+                      ),
+                    ),
+                    SizedBox(
+                      width:
+                          MediaQuery.of(context).size.width > 600
+                              ? null
+                              : (MediaQuery.of(context).size.width - 48) / 2,
+                      child: _buildStatItem(
+                        'Còn lại',
+                        '${remainingDays.toInt()}',
+                        Icons.schedule,
+                        Colors.green,
+                      ),
+                    ),
+                  ],
                 ),
               ],
             ),
-          ],
-        ),
-      ),
+          ),
+        );
+      },
     );
   }
 
@@ -310,173 +346,96 @@ class ManagerDashboard extends StatelessWidget {
     );
   }
 
-  Widget _buildSubordinatesCard(BuildContext context, List<User> subordinates) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Nhân viên dưới quyền',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Theme.of(context).primaryColor,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${subordinates.length}',
-                    style: const TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
+  Widget _buildPendingApprovalsCard(BuildContext context) {
+    return FutureBuilder<Map<String, dynamic>>(
+      future:
+          Provider.of<AuthProvider>(
+            context,
+            listen: false,
+          ).getPendingApprovals(),
+      builder: (context, snapshot) {
+        final pendingCount = snapshot.data?['totalCount'] ?? 0;
 
-            if (subordinates.isEmpty)
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: Colors.grey[100],
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Center(
-                  child: Text(
-                    'Không có nhân viên nào dưới quyền',
-                    style: TextStyle(
-                      color: Colors.grey,
-                      fontStyle: FontStyle.italic,
-                    ),
-                  ),
-                ),
-              )
-            else
-              ...subordinates.map(
-                (subordinate) => _buildSubordinateItem(context, subordinate),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSubordinateItem(BuildContext context, User subordinate) {
-    return Container(
-      margin: const EdgeInsets.only(bottom: 8),
-      padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Colors.grey[50],
-        borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.grey[300]!),
-      ),
-      child: Row(
-        children: [
-          CircleAvatar(
-            radius: 20,
-            backgroundColor: Colors.blue[100],
-            child: Text(
-              subordinate.fullName.split(' ').last[0].toUpperCase(),
-              style: TextStyle(
-                fontSize: 16,
-                fontWeight: FontWeight.bold,
-                color: Colors.blue[700],
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
+        return Card(
+          elevation: 4,
+          child: Padding(
+            padding: const EdgeInsets.all(16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(
-                  subordinate.fullName,
-                  style: const TextStyle(
-                    fontSize: 14,
-                    fontWeight: FontWeight.bold,
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    const Text(
+                      'Đơn nghỉ phép chờ duyệt',
+                      style: TextStyle(
+                        fontSize: 18,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.orange,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: Text(
+                        '$pendingCount',
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 16),
+
+                if (snapshot.connectionState == ConnectionState.waiting)
+                  const Center(child: CircularProgressIndicator())
+                else if (pendingCount == 0)
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[100],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Center(
+                      child: Text(
+                        'Không có đơn nghỉ phép nào chờ duyệt',
+                        style: TextStyle(
+                          color: Colors.grey,
+                          fontStyle: FontStyle.italic,
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  // TODO: Hiển thị danh sách đơn nghỉ phép chờ duyệt
+                  Container(
+                    padding: const EdgeInsets.all(16),
+                    decoration: BoxDecoration(
+                      color: Colors.blue[50],
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Center(
+                      child: Text(
+                        'Có $pendingCount đơn nghỉ phép chờ duyệt',
+                        style: TextStyle(
+                          color: Colors.blue[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ),
                   ),
-                ),
-                Text(
-                  'Còn lại: ${subordinate.remainingLeaveDays} ngày',
-                  style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                ),
               ],
             ),
           ),
-          Icon(Icons.arrow_forward_ios, size: 16, color: Colors.grey[400]),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildPendingApprovalsCard(BuildContext context) {
-    return Card(
-      elevation: 4,
-      child: Padding(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                const Text(
-                  'Đơn nghỉ phép chờ duyệt',
-                  style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
-                ),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.orange,
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Text(
-                    '0',
-                    style: TextStyle(
-                      color: Colors.white,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-            const SizedBox(height: 16),
-
-            // TODO: Hiển thị danh sách đơn nghỉ phép chờ duyệt
-            Container(
-              padding: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: Colors.grey[100],
-                borderRadius: BorderRadius.circular(8),
-              ),
-              child: const Center(
-                child: Text(
-                  'Không có đơn nghỉ phép nào chờ duyệt',
-                  style: TextStyle(
-                    color: Colors.grey,
-                    fontStyle: FontStyle.italic,
-                  ),
-                ),
-              ),
-            ),
-          ],
-        ),
-      ),
+        );
+      },
     );
   }
 }

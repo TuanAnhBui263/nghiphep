@@ -64,9 +64,6 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
     });
 
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final user = authProvider.currentUser!;
-
       // Tính tổng số ngày nghỉ
       final totalDays = LeaveRequest.calculateTotalDays(
         _selectedType,
@@ -75,11 +72,16 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
       );
 
       // Kiểm tra số ngày nghỉ còn lại
-      if (totalDays > user.remainingLeaveDays) {
+      final authProvider = Provider.of<AuthProvider>(context, listen: false);
+      final stats = await authProvider.getMyLeaveStatistics();
+      final totalDaysApproved = (stats['TotalDaysApproved'] ?? 0).toDouble();
+      final annualLeaveDays = 12.0; // TODO: Get from API
+      final remainingDays = annualLeaveDays - totalDaysApproved;
+      if (totalDays > remainingDays) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Số ngày nghỉ còn lại không đủ (còn ${user.remainingLeaveDays} ngày)',
+              'Số ngày nghỉ còn lại không đủ (còn $remainingDays ngày)',
             ),
             backgroundColor: Colors.red,
           ),
@@ -216,12 +218,26 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          Text(
-                            '${user.department} • Còn lại: ${user.remainingLeaveDays} ngày',
-                            style: TextStyle(
-                              fontSize: 14,
-                              color: Colors.grey[600],
-                            ),
+                          FutureBuilder<Map<String, dynamic>>(
+                            future: authProvider.getMyLeaveStatistics(),
+                            builder: (context, snapshot) {
+                              final stats = snapshot.data ?? {};
+                              final totalDaysApproved =
+                                  (stats['TotalDaysApproved'] ?? 0).toDouble();
+                              final annualLeaveDays = 12.0;
+                              final remainingDays =
+                                  annualLeaveDays - totalDaysApproved;
+
+                              return Text(
+                                user.departments.isNotEmpty
+                                    ? '${user.departments.first.departmentName} • Còn lại: ${remainingDays.toInt()} ngày'
+                                    : 'Chưa xác định phòng ban • Còn lại: ${remainingDays.toInt()} ngày',
+                                style: TextStyle(
+                                  fontSize: 14,
+                                  color: Colors.grey[600],
+                                ),
+                              );
+                            },
                           ),
                         ],
                       ),

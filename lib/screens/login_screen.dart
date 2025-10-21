@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../providers/auth_provider.dart';
-import 'dashboard_screen.dart';
 
 class LoginScreen extends StatefulWidget {
   const LoginScreen({super.key});
@@ -12,14 +11,14 @@ class LoginScreen extends StatefulWidget {
 
 class _LoginScreenState extends State<LoginScreen> {
   final _formKey = GlobalKey<FormState>();
-  final _usernameController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passwordController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
 
   @override
   void dispose() {
-    _usernameController.dispose();
+    _emailController.dispose();
     _passwordController.dispose();
     super.dispose();
   }
@@ -33,20 +32,28 @@ class _LoginScreenState extends State<LoginScreen> {
 
     try {
       final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      await authProvider.login(
-        _usernameController.text,
-        _passwordController.text,
-      );
+      await authProvider.login(_emailController.text, _passwordController.text);
 
+      // Hiển thị thông báo thành công
       if (mounted) {
-        Navigator.of(context).pushReplacement(
-          MaterialPageRoute(builder: (context) => const DashboardScreen()),
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Đăng nhập thành công!'),
+            backgroundColor: Colors.green,
+            duration: Duration(seconds: 2),
+          ),
         );
       }
+
+      // Navigation is handled by AuthWrapper
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+          SnackBar(
+            content: Text(e.toString().replaceFirst('Exception: ', '')),
+            backgroundColor: Colors.red,
+            duration: const Duration(seconds: 4),
+          ),
         );
       }
     } finally {
@@ -119,10 +126,11 @@ class _LoginScreenState extends State<LoginScreen> {
 
                         // Form đăng nhập
                         TextFormField(
-                          controller: _usernameController,
+                          controller: _emailController,
+                          keyboardType: TextInputType.emailAddress,
                           decoration: InputDecoration(
-                            labelText: 'Tên đăng nhập',
-                            prefixIcon: const Icon(Icons.person),
+                            labelText: 'Email',
+                            prefixIcon: const Icon(Icons.email),
                             border: OutlineInputBorder(
                               borderRadius: BorderRadius.circular(12),
                             ),
@@ -131,7 +139,12 @@ class _LoginScreenState extends State<LoginScreen> {
                           ),
                           validator: (value) {
                             if (value == null || value.isEmpty) {
-                              return 'Vui lòng nhập tên đăng nhập';
+                              return 'Vui lòng nhập email';
+                            }
+                            if (!RegExp(
+                              r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$',
+                            ).hasMatch(value)) {
+                              return 'Email không hợp lệ';
                             }
                             return null;
                           },
@@ -227,21 +240,25 @@ class _LoginScreenState extends State<LoginScreen> {
                                 ),
                               ),
                               const SizedBox(height: 8),
-                              _buildSampleAccount('admin', 'admin123', 'Admin'),
                               _buildSampleAccount(
-                                'truongphong',
-                                'truongphong123',
-                                'Trưởng phòng',
+                                'admin@thuehcm.gov.vn',
+                                'Admin@123',
+                                'Admin',
                               ),
                               _buildSampleAccount(
-                                'phophong',
-                                'phophong123',
-                                'Phó phòng',
+                                'truongthuehcm@thuehcm.gov.vn',
+                                'Admin@123',
+                                'Trưởng Thuế',
                               ),
                               _buildSampleAccount(
-                                'nhanvien1',
-                                'nhanvien123',
-                                'Nhân viên',
+                                'truongphong.hc@thuehcm.gov.vn',
+                                'Admin@123',
+                                'Trưởng Phòng HC',
+                              ),
+                              _buildSampleAccount(
+                                'nhanvien1.hc@thuehcm.gov.vn',
+                                'Admin@123',
+                                'Nhân viên HC',
                               ),
                             ],
                           ),
@@ -264,9 +281,15 @@ class _LoginScreenState extends State<LoginScreen> {
       child: Row(
         children: [
           Text('$role: ', style: const TextStyle(fontWeight: FontWeight.w500)),
-          Text(
-            '$username / $password',
-            style: TextStyle(color: Colors.blue[700], fontFamily: 'monospace'),
+          Expanded(
+            child: Text(
+              '$username / $password',
+              style: TextStyle(
+                color: Colors.blue[700],
+                fontFamily: 'monospace',
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
           ),
         ],
       ),
