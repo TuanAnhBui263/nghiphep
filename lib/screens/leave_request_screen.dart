@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import '../models/leave_request.dart';
 import '../providers/auth_provider.dart';
+import '../services/api_service.dart';
 
 class LeaveRequestScreen extends StatefulWidget {
   const LeaveRequestScreen({super.key});
@@ -15,7 +16,15 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
   final _formKey = GlobalKey<FormState>();
   final _reasonController = TextEditingController();
 
-  LeaveType _selectedType = LeaveType.fullDay;
+  // Leave types from API
+  List<Map<String, dynamic>> _leaveTypes = [];
+  int? _selectedLeaveTypeId;
+
+  // Sessions per spec: MORNING/AFTERNOON
+  String _startSession = 'MORNING';
+  String _endSession = 'AFTERNOON';
+
+  LeaveType _selectedType = LeaveType.fullDay; // fallback for total day calc UI
   DateTime _startDate = DateTime.now();
   DateTime _endDate = DateTime.now();
   bool _isLoading = false;
@@ -24,6 +33,33 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
   void dispose() {
     _reasonController.dispose();
     super.dispose();
+  }
+
+  @override
+  void initState() {
+    super.initState();
+    _loadLeaveTypes();
+  }
+
+  Future<void> _loadLeaveTypes() async {
+    try {
+      final types = await ApiService.getLeaveTypes();
+      if (!mounted) return;
+      setState(() {
+        _leaveTypes = types;
+        if (_leaveTypes.isNotEmpty) {
+          _selectedLeaveTypeId = _leaveTypes.first['id'] as int?;
+        }
+      });
+    } catch (e) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Không thể tải loại nghỉ phép: $e'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
   }
 
   Future<void> _submitLeaveRequest() async {
@@ -89,9 +125,21 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
         return;
       }
 
-      // TODO: Gửi đơn nghỉ phép lên server
-      // Tạm thời hiển thị thông báo thành công
-      await Future.delayed(const Duration(seconds: 1));
+      // Submit theo tài liệu API
+      final success = await Provider.of<AuthProvider>(context, listen: false)
+          .createLeaveRequest({
+        'leaveTypeId': _selectedLeaveTypeId,
+        'startDate': _startDate.toUtc().toIso8601String(),
+        'endDate': _endDate.toUtc().toIso8601String(),
+        'startSession': _startSession,
+        'endSession': _endSession,
+        'reason': _reasonController.text.trim(),
+        'attachmentUrl': null,
+      });
+
+      if (!success) {
+        throw Exception('Gửi đơn nghỉ phép thất bại');
+      }
 
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -272,14 +320,14 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
             ),
             const SizedBox(height: 16),
 
-            // Loại nghỉ
+            // Loại nghỉ (từ API)
             const Text(
               'Loại nghỉ',
               style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
             ),
             const SizedBox(height: 8),
-            DropdownButtonFormField<LeaveType>(
-              value: _selectedType,
+            DropdownButtonFormField<int>(
+              value: _selectedLeaveTypeId,
               decoration: InputDecoration(
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(8),
@@ -287,106 +335,126 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
                 filled: true,
                 fillColor: Colors.grey[50],
               ),
-              items:
-                  LeaveType.values.map((type) {
-                    String label;
-                    switch (type) {
-                      case LeaveType.fullDay:
-                        label = 'Nghỉ cả ngày';
-                        break;
-                      case LeaveType.halfDay:
-                        label = 'Nghỉ nửa ngày';
-                        break;
-                      case LeaveType.sickLeave:
-                        label = 'Nghỉ ốm';
-                        break;
-                    }
-                    return DropdownMenuItem(value: type, child: Text(label));
-                  }).toList(),
+              items: _leaveTypes
+                  .map(
+                    (t) => DropdownMenuItem<int>(
+                      value: t['id'] as int?,
+                      child: Text(
+                        (t['leaveTypeName'] ?? t['name'] ?? 'Loại nghỉ')
+                            .toString(),
+                      ),
+                    ),
+                  )
+                  .toList(),
               onChanged: (value) {
                 setState(() {
-                  _selectedType = value!;
+                  _selectedLeaveTypeId = value;
                 });
               },
+              validator: (value) => value == null ? 'Chọn loại nghỉ' : null,
             ),
             const SizedBox(height: 16),
 
-            // Ngày bắt đầu
-            const Text(
-              'Ngày bắt đầu',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: _startDate,
-                  firstDate: DateTime.now(),
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                );
-                if (date != null) {
-                  setState(() {
-                    _startDate = date;
-                    if (_endDate.isBefore(_startDate)) {
-                      _endDate = _startDate;
-                    }
-                  });
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey[50],
-                ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today),
-                    const SizedBox(width: 8),
-                    Text(DateFormat('dd/MM/yyyy').format(_startDate)),
-                  ],
-                ),
+            // Phiên bắt đầu/kết thúc
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue[50],
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue[200]!),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Row(
+                    children: [
+                      Icon(Icons.schedule, color: Colors.blue[700], size: 16),
+                      const SizedBox(width: 6),
+                      const Text(
+                        'Phiên làm việc',
+                        style: TextStyle(
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.blue,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: _buildSessionDropdown(
+                          'Bắt đầu',
+                          _startSession,
+                          (v) => setState(() => _startSession = v!),
+                        ),
+                      ),
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: _buildSessionDropdown(
+                          'Kết thúc',
+                          _endSession,
+                          (v) => setState(() => _endSession = v!),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
               ),
             ),
             const SizedBox(height: 16),
 
-            // Ngày kết thúc
-            const Text(
-              'Ngày kết thúc',
-              style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
-            ),
-            const SizedBox(height: 8),
-            InkWell(
-              onTap: () async {
-                final date = await showDatePicker(
-                  context: context,
-                  initialDate: _endDate,
-                  firstDate: _startDate,
-                  lastDate: DateTime.now().add(const Duration(days: 365)),
-                );
-                if (date != null) {
-                  setState(() {
-                    _endDate = date;
-                  });
-                }
-              },
-              child: Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  border: Border.all(color: Colors.grey),
-                  borderRadius: BorderRadius.circular(8),
-                  color: Colors.grey[50],
+            // Ngày bắt đầu và kết thúc
+            Row(
+              children: [
+                Expanded(
+                  child: _buildDateField(
+                    'Ngày bắt đầu',
+                    _startDate,
+                    Icons.calendar_today,
+                    Colors.green,
+                    () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _startDate,
+                        firstDate: DateTime.now(),
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (date != null) {
+                        setState(() {
+                          _startDate = date;
+                          if (_endDate.isBefore(_startDate)) {
+                            _endDate = _startDate;
+                          }
+                        });
+                      }
+                    },
+                  ),
                 ),
-                child: Row(
-                  children: [
-                    const Icon(Icons.calendar_today),
-                    const SizedBox(width: 8),
-                    Text(DateFormat('dd/MM/yyyy').format(_endDate)),
-                  ],
+                const SizedBox(width: 12),
+                Expanded(
+                  child: _buildDateField(
+                    'Ngày kết thúc',
+                    _endDate,
+                    Icons.calendar_today,
+                    Colors.red,
+                    () async {
+                      final date = await showDatePicker(
+                        context: context,
+                        initialDate: _endDate,
+                        firstDate: _startDate,
+                        lastDate: DateTime.now().add(const Duration(days: 365)),
+                      );
+                      if (date != null) {
+                        setState(() {
+                          _endDate = date;
+                        });
+                      }
+                    },
+                  ),
                 ),
-              ),
+              ],
             ),
             const SizedBox(height: 16),
 
@@ -441,6 +509,90 @@ class _LeaveRequestScreenState extends State<LeaveRequestScreen> {
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildSessionDropdown(String label, String value, Function(String?) onChanged) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        DropdownButtonFormField<String>(
+          value: value,
+          decoration: InputDecoration(
+            border: OutlineInputBorder(
+              borderRadius: BorderRadius.circular(6),
+            ),
+            filled: true,
+            fillColor: Colors.white,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
+          ),
+          items: const [
+            DropdownMenuItem(
+              value: 'MORNING',
+              child: Text('Sáng', style: TextStyle(fontSize: 12)),
+            ),
+            DropdownMenuItem(
+              value: 'AFTERNOON',
+              child: Text('Chiều', style: TextStyle(fontSize: 12)),
+            ),
+          ],
+          onChanged: onChanged,
+        ),
+      ],
+    );
+  }
+
+  Widget _buildDateField(String label, DateTime date, IconData icon, Color color, VoidCallback onTap) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          label,
+          style: const TextStyle(
+            fontSize: 12,
+            fontWeight: FontWeight.w500,
+            color: Colors.grey,
+          ),
+        ),
+        const SizedBox(height: 4),
+        InkWell(
+          onTap: onTap,
+          child: Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              border: Border.all(color: color.withOpacity(0.3)),
+              borderRadius: BorderRadius.circular(6),
+              color: color.withOpacity(0.05),
+            ),
+            child: Row(
+              children: [
+                Icon(icon, color: color, size: 16),
+                const SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    DateFormat('dd/MM/yyyy').format(date),
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: color,
+                      fontWeight: FontWeight.w500,
+                    ),
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ),
+      ],
     );
   }
 }

@@ -471,4 +471,36 @@ class AuthProvider extends ChangeNotifier {
       return false;
     }
   }
+
+  // ==================== ROLES & POSITION TYPES METHODS ====================
+
+  /// Lấy danh sách Roles
+  Future<List<Map<String, dynamic>>> getRoles() async {
+    try {
+      return await ApiService.getRoles();
+    } catch (e) {
+      debugPrint('Error getting roles: $e');
+      return [];
+    }
+  }
+
+  /// Lấy danh sách Position Types
+  Future<List<Map<String, dynamic>>> getPositionTypes() async {
+    try {
+      return await ApiService.getPositionTypes();
+    } catch (e) {
+      debugPrint('Error getting position types: $e');
+      return [];
+    }
+  }
+
+  /// Lấy danh sách chức vụ có quyền duyệt
+  Future<List<Map<String, dynamic>>> getApprovalPositions() async {
+    try {
+      return await ApiService.getApprovalPositions();
+    } catch (e) {
+      debugPrint('Error getting approval positions: $e');
+      return [];
+    }
+  }
 }

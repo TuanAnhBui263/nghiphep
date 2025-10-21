@@ -422,7 +422,7 @@ class ApiService {
     }
 
     final uri = Uri.parse(
-      '$baseUrl/LeaveRequests',
+      '$baseUrl/leaverequests',
     ).replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
@@ -439,7 +439,7 @@ class ApiService {
 
   /// Lấy chi tiết yêu cầu nghỉ phép theo ID
   static Future<Map<String, dynamic>> getLeaveRequestById(int id) async {
-    final response = await _makeRequest('GET', '/LeaveRequests/$id');
+    final response = await _makeRequest('GET', '/leaverequests/$id');
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -463,7 +463,7 @@ class ApiService {
     };
 
     final uri = Uri.parse(
-      '$baseUrl/LeaveRequests/my-requests',
+      '$baseUrl/leaverequests/my-requests',
     ).replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
@@ -489,7 +489,7 @@ class ApiService {
     };
 
     final uri = Uri.parse(
-      '$baseUrl/LeaveRequests/pending-approvals',
+      '$baseUrl/leaverequests/pending-approvals',
     ).replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
@@ -506,7 +506,7 @@ class ApiService {
 
   /// Lấy thống kê yêu cầu nghỉ phép của tôi
   static Future<Map<String, dynamic>> getMyStatistics() async {
-    final response = await _makeRequest('GET', '/LeaveRequests/my-statistics');
+    final response = await _makeRequest('GET', '/leaverequests/my-statistics');
 
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
@@ -521,7 +521,7 @@ class ApiService {
   ) async {
     final response = await _makeRequest(
       'POST',
-      '/LeaveRequests',
+      '/leaverequests',
       body: requestData,
     );
 
@@ -542,7 +542,7 @@ class ApiService {
   ) async {
     final response = await _makeRequest(
       'POST',
-      '/LeaveRequests/$id/approve',
+      '/leaverequests/$id/approve',
       body: approvalData,
     );
 
@@ -565,7 +565,7 @@ class ApiService {
   ) async {
     final response = await _makeRequest(
       'POST',
-      '/LeaveRequests/$id/reject',
+      '/leaverequests/$id/reject',
       body: rejectionData,
     );
 
@@ -583,7 +583,7 @@ class ApiService {
 
   /// Hủy yêu cầu nghỉ phép
   static Future<void> cancelLeaveRequest(int id) async {
-    final response = await _makeRequest('POST', '/LeaveRequests/$id/cancel');
+    final response = await _makeRequest('POST', '/leaverequests/$id/cancel');
 
     if (response.statusCode == 200) {
       return;
@@ -616,7 +616,7 @@ class ApiService {
     }
 
     final uri = Uri.parse(
-      '$baseUrl/LeaveRequests/department-statistics',
+      '$baseUrl/leaverequests/department-statistics',
     ).replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
@@ -905,7 +905,8 @@ class ApiService {
 
   /// Lấy danh sách loại nghỉ phép
   static Future<List<Map<String, dynamic>>> getLeaveTypes() async {
-    final response = await _makeRequest('GET', '/LeaveTypes');
+    // Theo tài liệu: GET /leaverequests/leave-types
+    final response = await _makeRequest('GET', '/leaverequests/leave-types');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -921,7 +922,7 @@ class ApiService {
   ) async {
     final response = await _makeRequest(
       'POST',
-      '/LeaveTypes',
+      '/leaverequests/leave-types',
       body: leaveTypeData,
     );
 
@@ -939,7 +940,7 @@ class ApiService {
   ) async {
     final response = await _makeRequest(
       'PUT',
-      '/LeaveTypes/$id',
+      '/leaverequests/leave-types/$id',
       body: leaveTypeData,
     );
 
@@ -954,7 +955,7 @@ class ApiService {
 
   /// Lấy danh sách cấu hình duyệt
   static Future<List<Map<String, dynamic>>> getApprovalConfigs() async {
-    final response = await _makeRequest('GET', '/ApprovalConfigs');
+    final response = await _makeRequest('GET', '/approvalconfigs');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -970,7 +971,7 @@ class ApiService {
   ) async {
     final response = await _makeRequest(
       'POST',
-      '/ApprovalConfigs',
+      '/approvalconfigs',
       body: configData,
     );
 
@@ -988,7 +989,7 @@ class ApiService {
   ) async {
     final response = await _makeRequest(
       'PUT',
-      '/ApprovalConfigs/$id',
+      '/approvalconfigs/$id',
       body: configData,
     );
 
@@ -996,6 +997,44 @@ class ApiService {
       return jsonDecode(response.body);
     } else {
       throw Exception('Không thể cập nhật cấu hình duyệt');
+    }
+  }
+
+  // ==================== ROLES & POSITION TYPES API ====================
+
+  /// Lấy danh sách Roles
+  static Future<List<Map<String, dynamic>>> getRoles() async {
+    final response = await _makeRequest('GET', '/roles');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } else {
+      throw Exception('Không thể lấy danh sách roles');
+    }
+  }
+
+  /// Lấy danh sách Position Types
+  static Future<List<Map<String, dynamic>>> getPositionTypes() async {
+    final response = await _makeRequest('GET', '/positiontypes');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } else {
+      throw Exception('Không thể lấy danh sách position types');
+    }
+  }
+
+  /// Lấy danh sách chức vụ có quyền duyệt
+  static Future<List<Map<String, dynamic>>> getApprovalPositions() async {
+    final response = await _makeRequest('GET', '/positiontypes/approval-positions');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } else {
+      throw Exception('Không thể lấy danh sách chức vụ có quyền duyệt');
     }
   }
 }

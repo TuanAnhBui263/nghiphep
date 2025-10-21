@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../user_management_screen.dart';
+import '../leave_request_screen.dart';
+import '../leave_history_screen.dart';
 import 'department_management_screen.dart';
 import 'leave_type_management_screen.dart';
 import 'approval_config_management_screen.dart';
@@ -411,6 +413,34 @@ class AdminDashboard extends StatelessWidget {
                       MaterialPageRoute(
                         builder:
                             (context) => const ApprovalConfigManagementScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  context,
+                  'Xin nghỉ phép',
+                  Icons.add_circle_outline,
+                  Colors.teal,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveRequestScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  context,
+                  'Lịch sử nghỉ',
+                  Icons.history,
+                  Colors.indigo,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveHistoryScreen(),
                       ),
                     );
                   },

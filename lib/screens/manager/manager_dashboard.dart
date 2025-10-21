@@ -2,6 +2,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../approval_screen.dart';
+import '../leave_request_screen.dart';
+import '../leave_history_screen.dart';
 
 class ManagerDashboard extends StatelessWidget {
   const ManagerDashboard({super.key});
@@ -270,38 +272,66 @@ class ManagerDashboard extends StatelessWidget {
             ),
             const SizedBox(height: 16),
 
-            Row(
+            // Grid layout cho các nút chức năng
+            GridView.count(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              crossAxisCount: 2,
+              crossAxisSpacing: 12,
+              mainAxisSpacing: 12,
+              childAspectRatio: 1.2,
               children: [
-                Expanded(
-                  child: _buildActionButton(
-                    context,
-                    'Duyệt đơn nghỉ',
-                    Icons.approval,
-                    Colors.blue,
-                    () {
-                      Navigator.of(context).push(
-                        MaterialPageRoute(
-                          builder: (context) => const ApprovalScreen(),
-                        ),
-                      );
-                    },
-                  ),
+                _buildActionButton(
+                  context,
+                  'Duyệt đơn nghỉ',
+                  Icons.approval,
+                  Colors.blue,
+                  () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const ApprovalScreen(),
+                      ),
+                    );
+                  },
                 ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: _buildActionButton(
-                    context,
-                    'Báo cáo',
-                    Icons.assessment,
-                    Colors.green,
-                    () {
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Chức năng đang phát triển'),
-                        ),
-                      );
-                    },
-                  ),
+                _buildActionButton(
+                  context,
+                  'Xin nghỉ phép',
+                  Icons.add_circle_outline,
+                  Colors.orange,
+                  () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveRequestScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionButton(
+                  context,
+                  'Lịch sử nghỉ',
+                  Icons.history,
+                  Colors.purple,
+                  () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveHistoryScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionButton(
+                  context,
+                  'Báo cáo',
+                  Icons.assessment,
+                  Colors.green,
+                  () {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(
+                        content: Text('Chức năng đang phát triển'),
+                      ),
+                    );
+                  },
                 ),
               ],
             ),
@@ -322,23 +352,27 @@ class ManagerDashboard extends StatelessWidget {
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
       child: Container(
-        padding: const EdgeInsets.all(16),
+        padding: const EdgeInsets.all(12),
         decoration: BoxDecoration(
-          border: Border.all(color: color.withValues(alpha: 0.3)),
+          color: color.withOpacity(0.1),
+          border: Border.all(color: color.withOpacity(0.3)),
           borderRadius: BorderRadius.circular(12),
         ),
         child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 32),
-            const SizedBox(height: 8),
+            Icon(icon, color: color, size: 28),
+            const SizedBox(height: 6),
             Text(
               title,
               style: TextStyle(
-                fontSize: 14,
-                fontWeight: FontWeight.w500,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
                 color: color,
               ),
               textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
             ),
           ],
         ),
