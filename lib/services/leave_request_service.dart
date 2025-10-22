@@ -154,7 +154,7 @@ class LeaveRequestService {
 
   /// Lấy danh sách loại nghỉ phép
   static Future<List<LeaveType>> getLeaveTypes() async {
-    final response = await _makeRequest('GET', '/leave-requests/leave-types');
+    final response = await _makeRequest('GET', '/leaverequests/leave-types');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body) as List;
@@ -183,7 +183,7 @@ class LeaveRequestService {
     if (month != null) queryParams['month'] = month.toString();
     if (year != null) queryParams['year'] = year.toString();
 
-    final uri = Uri.parse('$baseUrl/leave-requests/my-requests')
+    final uri = Uri.parse('$baseUrl/leaverequests/my-requests')
         .replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
@@ -231,7 +231,7 @@ class LeaveRequestService {
       queryParams['startDateTo'] = startDateTo.toIso8601String();
     }
 
-    final uri = Uri.parse('$baseUrl/leave-requests/pending-approvals')
+    final uri = Uri.parse('$baseUrl/leaverequests/pending-approvals')
         .replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
@@ -283,7 +283,7 @@ class LeaveRequestService {
     }
     if (employeeName != null) queryParams['employeeName'] = employeeName;
 
-    final uri = Uri.parse('$baseUrl/leave-requests/admin/all-requests')
+    final uri = Uri.parse('$baseUrl/leaverequests/admin/all-requests')
         .replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
@@ -310,7 +310,7 @@ class LeaveRequestService {
   ) async {
     final response = await _makeRequest(
       'POST',
-      '/leave-requests',
+      '/leaverequests',
       body: dto.toJson(),
     );
 
@@ -329,7 +329,7 @@ class LeaveRequestService {
 
   /// Lấy chi tiết đơn nghỉ phép theo ID
   static Future<LeaveRequestFull> getLeaveRequest(int id) async {
-    final response = await _makeRequest('GET', '/leave-requests/$id');
+    final response = await _makeRequest('GET', '/leaverequests/$id');
 
     if (response.statusCode == 200) {
       final data = jsonDecode(response.body);
@@ -353,7 +353,7 @@ class LeaveRequestService {
   ) async {
     final response = await _makeRequest(
       'POST',
-      '/leave-requests/$id/approve',
+      '/leaverequests/$id/approve',
       body: {
         'approvalLevelId': approvalLevelId,
         'comments': comments,
@@ -378,7 +378,7 @@ class LeaveRequestService {
   ) async {
     final response = await _makeRequest(
       'POST',
-      '/leave-requests/$id/reject',
+      '/leaverequests/$id/reject',
       body: {
         'approvalLevelId': approvalLevelId,
         'comments': comments,
@@ -397,7 +397,7 @@ class LeaveRequestService {
 
   /// Hủy đơn nghỉ phép
   static Future<void> cancelLeaveRequest(int id) async {
-    final response = await _makeRequest('POST', '/leave-requests/$id/cancel');
+    final response = await _makeRequest('POST', '/leaverequests/$id/cancel');
 
     if (response.statusCode == 200) {
       return;
@@ -416,7 +416,7 @@ class LeaveRequestService {
     final queryParams = <String, String>{};
     if (year != null) queryParams['year'] = year.toString();
 
-    final uri = Uri.parse('$baseUrl/leave-requests/my-statistics')
+    final uri = Uri.parse('$baseUrl/leaverequests/my-statistics')
         .replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
@@ -443,7 +443,7 @@ class LeaveRequestService {
     if (year != null) queryParams['year'] = year.toString();
     if (month != null) queryParams['month'] = month.toString();
 
-    final uri = Uri.parse('$baseUrl/leave-requests/department-statistics')
+    final uri = Uri.parse('$baseUrl/leaverequests/department-statistics')
         .replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
