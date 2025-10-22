@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
 import '../leave_request_screen.dart';
 import '../leave_history_screen.dart';
+import '../admin/leave_request_management_screen.dart';
+import '../admin/leave_statistics_screen.dart';
 
 class EmployeeDashboard extends StatelessWidget {
   const EmployeeDashboard({super.key});
@@ -282,9 +284,22 @@ class EmployeeDashboard extends StatelessWidget {
               children: [
                 _buildActionButton(
                   context,
+                  'Đơn nghỉ phép',
+                  Icons.assignment,
+                  Colors.blue,
+                  () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveRequestManagementScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionButton(
+                  context,
                   'Xin nghỉ phép',
                   Icons.add_circle_outline,
-                  Colors.blue,
+                  Colors.orange,
                   () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
@@ -302,6 +317,19 @@ class EmployeeDashboard extends StatelessWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => const LeaveHistoryScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionButton(
+                  context,
+                  'Thống kê',
+                  Icons.analytics,
+                  Colors.purple,
+                  () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveStatisticsScreen(),
                       ),
                     );
                   },

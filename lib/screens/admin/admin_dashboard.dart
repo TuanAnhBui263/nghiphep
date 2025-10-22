@@ -7,6 +7,8 @@ import '../leave_history_screen.dart';
 import 'department_management_screen.dart';
 import 'leave_type_management_screen.dart';
 import 'approval_config_management_screen.dart';
+import 'leave_request_management_screen.dart';
+import 'leave_statistics_screen.dart';
 
 class AdminDashboard extends StatelessWidget {
   const AdminDashboard({super.key});
@@ -419,9 +421,37 @@ class AdminDashboard extends StatelessWidget {
                 ),
                 _buildActionCard(
                   context,
+                  'Quản lý đơn nghỉ',
+                  Icons.assignment,
+                  Colors.teal,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveRequestManagementScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  context,
+                  'Thống kê nghỉ phép',
+                  Icons.analytics,
+                  Colors.indigo,
+                  () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveStatisticsScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionCard(
+                  context,
                   'Xin nghỉ phép',
                   Icons.add_circle_outline,
-                  Colors.teal,
+                  Colors.cyan,
                   () {
                     Navigator.push(
                       context,
@@ -435,7 +465,7 @@ class AdminDashboard extends StatelessWidget {
                   context,
                   'Lịch sử nghỉ',
                   Icons.history,
-                  Colors.indigo,
+                  Colors.brown,
                   () {
                     Navigator.push(
                       context,

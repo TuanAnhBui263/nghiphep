@@ -4,6 +4,8 @@ import '../../providers/auth_provider.dart';
 import '../approval_screen.dart';
 import '../leave_request_screen.dart';
 import '../leave_history_screen.dart';
+import '../admin/leave_request_management_screen.dart';
+import '../admin/leave_statistics_screen.dart';
 
 class ManagerDashboard extends StatelessWidget {
   const ManagerDashboard({super.key});
@@ -283,13 +285,26 @@ class ManagerDashboard extends StatelessWidget {
               children: [
                 _buildActionButton(
                   context,
-                  'Duyệt đơn nghỉ',
+                  'Đơn cần duyệt',
                   Icons.approval,
                   Colors.blue,
                   () {
                     Navigator.of(context).push(
                       MaterialPageRoute(
-                        builder: (context) => const ApprovalScreen(),
+                        builder: (context) => const LeaveRequestManagementScreen(),
+                      ),
+                    );
+                  },
+                ),
+                _buildActionButton(
+                  context,
+                  'Thống kê',
+                  Icons.analytics,
+                  Colors.green,
+                  () {
+                    Navigator.of(context).push(
+                      MaterialPageRoute(
+                        builder: (context) => const LeaveStatisticsScreen(),
                       ),
                     );
                   },
@@ -316,19 +331,6 @@ class ManagerDashboard extends StatelessWidget {
                     Navigator.of(context).push(
                       MaterialPageRoute(
                         builder: (context) => const LeaveHistoryScreen(),
-                      ),
-                    );
-                  },
-                ),
-                _buildActionButton(
-                  context,
-                  'Báo cáo',
-                  Icons.assessment,
-                  Colors.green,
-                  () {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('Chức năng đang phát triển'),
                       ),
                     );
                   },
