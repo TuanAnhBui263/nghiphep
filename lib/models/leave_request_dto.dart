@@ -92,7 +92,7 @@ class ApprovalInfo {
   factory ApprovalInfo.fromJson(Map<String, dynamic> json) {
     return ApprovalInfo(
       id: json['id'],
-      approverName: json['approverName'],
+      approverName: json['approverName'] ?? '',
       status: json['status'],
       comments: json['comments'],
       approvedAt: json['approvedAt'],
@@ -125,15 +125,15 @@ class LeaveRequestSummary {
 
   factory LeaveRequestSummary.fromJson(Map<String, dynamic> json) {
     return LeaveRequestSummary(
-      id: json['id'],
-      requestCode: json['requestCode'],
-      employeeName: json['employeeName'],
-      leaveTypeName: json['leaveTypeName'],
-      startDate: json['startDate'],
-      endDate: json['endDate'],
-      totalDays: json['totalDays'].toDouble(),
-      status: json['status'],
-      createdAt: json['createdAt'],
+      id: json['id'] ?? 0,
+      requestCode: json['requestCode'] ?? '',
+      employeeName: json['employeeName'] ?? '',
+      leaveTypeName: json['leaveTypeName'] ?? '',
+      startDate: json['startDate'] ?? '',
+      endDate: json['endDate'] ?? '',
+      totalDays: (json['totalDays'] ?? 0).toDouble(),
+      status: json['status'] ?? 'PENDING',
+      createdAt: json['createdAt'] ?? '',
     );
   }
 }
@@ -175,24 +175,24 @@ class LeaveRequestDetail {
 
   factory LeaveRequestDetail.fromJson(Map<String, dynamic> json) {
     return LeaveRequestDetail(
-      id: json['id'],
-      requestCode: json['requestCode'],
-      employeeName: json['employeeName'],
-      leaveTypeName: json['leaveTypeName'],
-      startDate: json['startDate'],
-      endDate: json['endDate'],
-      startSession: json['startSession'],
-      endSession: json['endSession'],
-      totalDays: json['totalDays'].toDouble(),
-      reason: json['reason'],
-      status: json['status'],
+      id: json['id'] ?? 0,
+      requestCode: json['requestCode'] ?? '',
+      employeeName: json['employeeName'] ?? '',
+      leaveTypeName: json['leaveTypeName'] ?? '',
+      startDate: json['startDate'] ?? '',
+      endDate: json['endDate'] ?? '',
+      startSession: json['startSession'] ?? 'FULL',
+      endSession: json['endSession'] ?? 'FULL',
+      totalDays: (json['totalDays'] ?? 0).toDouble(),
+      reason: json['reason'] ?? '',
+      status: json['status'] ?? 'PENDING',
       leaveDetails: (json['leaveDetails'] as List?)
           ?.map((e) => LeaveDetailItem.fromJson(e))
           .toList() ?? [],
       approvals: (json['approvals'] as List?)
           ?.map((e) => ApprovalInfo.fromJson(e))
           .toList() ?? [],
-      createdAt: json['createdAt'],
+      createdAt: json['createdAt'] ?? '',
       updatedAt: json['updatedAt'],
     );
   }
@@ -213,10 +213,10 @@ class LeaveDetailItem {
 
   factory LeaveDetailItem.fromJson(Map<String, dynamic> json) {
     return LeaveDetailItem(
-      id: json['id'],
-      leaveDate: json['leaveDate'],
-      session: json['session'],
-      dayValue: json['dayValue'].toDouble(),
+      id: json['id'] ?? 0,
+      leaveDate: json['leaveDate'] ?? '',
+      session: json['session'] ?? 'FULL',
+      dayValue: (json['dayValue'] ?? 0).toDouble(),
     );
   }
 }
@@ -263,9 +263,9 @@ class LeaveType {
 
   factory LeaveType.fromJson(Map<String, dynamic> json) {
     return LeaveType(
-      id: json['id'],
-      leaveTypeName: json['leaveTypeName'],
-      leaveTypeCode: json['leaveTypeCode'],
+      id: json['id'] ?? 0,
+      leaveTypeName: json['leaveTypeName'] ?? '',
+      leaveTypeCode: json['leaveTypeCode'] ?? '',
     );
   }
 }

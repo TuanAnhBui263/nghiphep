@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../services/leave_request_service.dart';
 import '../models/leave_request_dto.dart';
+import 'create_leave_request_screen.dart';
 
 class MyLeaveRequestsScreen extends StatefulWidget {
   const MyLeaveRequestsScreen({super.key});
@@ -279,10 +280,10 @@ class _MyLeaveRequestsScreenState extends State<MyLeaveRequestsScreen> {
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () async {
-          final result = await Navigator.push(
+          final result = await Navigator.push<bool>(
             context,
             MaterialPageRoute(
-              builder: (context) => const LeaveRequestExampleScreen(),
+              builder: (context) => const CreateLeaveRequestScreen(),
             ),
           );
           if (result == true) {
