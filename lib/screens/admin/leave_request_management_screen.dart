@@ -78,7 +78,7 @@ class _LeaveRequestManagementScreenState
         );
       } else {
         // Employee: Lấy đơn của mình
-        result = await LeaveRequestService.getMyRequests(
+        result = await LeaveRequestService.getMyLeaveRequests(
           status: _selectedStatus == 'ALL' ? null : _selectedStatus,
           pageNumber: _currentPage,
           pageSize: _pageSize,

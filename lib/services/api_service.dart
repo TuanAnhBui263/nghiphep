@@ -909,19 +909,6 @@ class ApiService {
 
   // ==================== LEAVE TYPE METHODS ====================
 
-  /// Lấy danh sách loại nghỉ phép
-  static Future<List<Map<String, dynamic>>> getLeaveTypes() async {
-    // Theo tài liệu: GET /leaverequests/leave-types
-    final response = await _makeRequest('GET', '/leaverequests/leave-types');
-
-    if (response.statusCode == 200) {
-      final data = jsonDecode(response.body);
-      return List<Map<String, dynamic>>.from(data);
-    } else {
-      throw Exception('Không thể lấy danh sách loại nghỉ phép');
-    }
-  }
-
   /// Tạo loại nghỉ phép mới
   static Future<Map<String, dynamic>> createLeaveType(
     Map<String, dynamic> leaveTypeData,

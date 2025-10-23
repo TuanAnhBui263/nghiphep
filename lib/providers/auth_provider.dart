@@ -162,11 +162,17 @@ class AuthProvider extends ChangeNotifier {
 
   /// Lấy danh sách đơn nghỉ phép của tôi
   Future<Map<String, dynamic>> getMyLeaveRequests({
+    String? status,
+    int? month,
+    int? year,
     int pageNumber = 1,
     int pageSize = 10,
   }) async {
     try {
       return await ApiService.getMyLeaveRequests(
+        status: status,
+        month: month,
+        year: year,
         pageNumber: pageNumber,
         pageSize: pageSize,
       );
@@ -177,6 +183,7 @@ class AuthProvider extends ChangeNotifier {
         'totalCount': 0,
         'pageNumber': pageNumber,
         'pageSize': pageSize,
+        'hasMore': false,
       };
     }
   }
