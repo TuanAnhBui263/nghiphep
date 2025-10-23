@@ -544,9 +544,15 @@ class _AddUserScreenState extends State<AddUserScreen> {
   Future<void> _selectDate(TextEditingController controller) async {
     final DateTime? picked = await showDatePicker(
       context: context,
-      initialDate: DateTime.now(),
-      firstDate: DateTime(1900),
-      lastDate: DateTime.now(),
+      initialDate: controller == _dateOfBirthController 
+          ? DateTime.now().subtract(const Duration(days: 365 * 25)) // Default to 25 years ago for birth date
+          : DateTime.now(),
+      firstDate: controller == _dateOfBirthController 
+          ? DateTime(1900) 
+          : DateTime(2000), // Join date can't be before 2000
+      lastDate: controller == _dateOfBirthController 
+          ? DateTime.now() 
+          : DateTime.now().add(const Duration(days: 365)), // Join date can be in the future
     );
     if (picked != null) {
       controller.text = picked.toIso8601String().split('T')[0];
@@ -567,23 +573,38 @@ class _AddUserScreenState extends State<AddUserScreen> {
           builder: (context, setState) {
             return AlertDialog(
               title: const Text('Chọn vai trò'),
-              content: SingleChildScrollView(
-                child: Column(
-                  children: allItems.map((role) {
-                    return CheckboxListTile(
-                      title: Text(role.roleName),
-                      value: tempSelected.contains(role.id),
-                      onChanged: (bool? value) {
-                        setState(() {
-                          if (value == true) {
-                            tempSelected.add(role.id);
-                          } else {
-                            tempSelected.remove(role.id);
-                          }
-                        });
-                      },
-                    );
-                  }).toList(),
+              content: SizedBox(
+                width: double.maxFinite,
+                child: SingleChildScrollView(
+                  child: Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (allItems.isEmpty)
+                        const Padding(
+                          padding: EdgeInsets.all(16.0),
+                          child: Text('Không có vai trò nào'),
+                        )
+                      else
+                        ...allItems.map((role) {
+                          return CheckboxListTile(
+                            title: Text(role.roleName),
+                            subtitle: role.description != null 
+                                ? Text(role.description!, style: const TextStyle(fontSize: 12))
+                                : null,
+                            value: tempSelected.contains(role.id),
+                            onChanged: (bool? value) {
+                              setState(() {
+                                if (value == true) {
+                                  tempSelected.add(role.id);
+                                } else {
+                                  tempSelected.remove(role.id);
+                                }
+                              });
+                            },
+                          );
+                        }).toList(),
+                    ],
+                  ),
                 ),
               ),
               actions: [
@@ -591,12 +612,12 @@ class _AddUserScreenState extends State<AddUserScreen> {
                   onPressed: () => Navigator.of(context).pop(),
                   child: const Text('Hủy'),
                 ),
-                TextButton(
+                ElevatedButton(
                   onPressed: () {
                     onChanged(tempSelected);
                     Navigator.of(context).pop();
                   },
-                  child: const Text('Xác nhận'),
+                  child: Text('Xác nhận (${tempSelected.length})'),
                 ),
               ],
             );
