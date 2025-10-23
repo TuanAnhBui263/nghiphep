@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../providers/auth_provider.dart';
+import '../../models/leave_request_dto.dart';
+import '../../services/leave_request_service.dart';
 
 class LeaveTypeManagementScreen extends StatefulWidget {
   const LeaveTypeManagementScreen({super.key});
@@ -21,8 +23,8 @@ class _LeaveTypeManagementScreenState extends State<LeaveTypeManagementScreen> {
   bool _deductsFromBalance = true;
   bool _isActive = true;
 
-  List<Map<String, dynamic>> _leaveTypes = [];
-  Map<String, dynamic>? _editingLeaveType;
+  List<LeaveType> _leaveTypes = [];
+  LeaveType? _editingLeaveType;
 
   @override
   void initState() {
@@ -41,8 +43,7 @@ class _LeaveTypeManagementScreenState extends State<LeaveTypeManagementScreen> {
   Future<void> _loadLeaveTypes() async {
     setState(() => _isLoading = true);
     try {
-      final authProvider = Provider.of<AuthProvider>(context, listen: false);
-      final leaveTypes = await authProvider.getLeaveTypes();
+      final leaveTypes = await LeaveRequestService.getLeaveTypes();
       setState(() => _leaveTypes = leaveTypes);
     } catch (e) {
       if (mounted) {
@@ -70,14 +71,14 @@ class _LeaveTypeManagementScreenState extends State<LeaveTypeManagementScreen> {
     showDialog(context: context, builder: (context) => _buildLeaveTypeDialog());
   }
 
-  void _showEditLeaveTypeDialog(Map<String, dynamic> leaveType) {
+  void _showEditLeaveTypeDialog(LeaveType leaveType) {
     _editingLeaveType = leaveType;
-    _nameController.text = leaveType['leaveTypeName'] ?? '';
-    _codeController.text = leaveType['leaveTypeCode'] ?? '';
-    _descriptionController.text = leaveType['description'] ?? '';
-    _requiresAttachment = leaveType['requiresAttachment'] ?? false;
-    _deductsFromBalance = leaveType['deductsFromBalance'] ?? true;
-    _isActive = leaveType['isActive'] ?? true;
+    _nameController.text = leaveType.leaveTypeName;
+    _codeController.text = leaveType.leaveTypeCode;
+    _descriptionController.text = '';
+    _requiresAttachment = false;
+    _deductsFromBalance = true;
+    _isActive = true;
 
     showDialog(context: context, builder: (context) => _buildLeaveTypeDialog());
   }
@@ -193,7 +194,7 @@ class _LeaveTypeManagementScreenState extends State<LeaveTypeManagementScreen> {
         success = await authProvider.createLeaveType(leaveTypeData);
       } else {
         success = await authProvider.updateLeaveType(
-          _editingLeaveType!['id'],
+          _editingLeaveType!.id,
           leaveTypeData,
         );
       }
@@ -301,26 +302,17 @@ class _LeaveTypeManagementScreenState extends State<LeaveTypeManagementScreen> {
                                     width: 50,
                                     height: 50,
                                     decoration: BoxDecoration(
-                                      color:
-                                          leaveType['isActive'] == true
-                                              ? Colors.green.withOpacity(0.1)
-                                              : Colors.grey.withOpacity(0.1),
+                                      color: Colors.green.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
                                     ),
-                                    child: Icon(
-                                      leaveType['requiresAttachment'] == true
-                                          ? Icons.attach_file
-                                          : Icons.event_available,
-                                      color:
-                                          leaveType['isActive'] == true
-                                              ? Colors.green
-                                              : Colors.grey,
+                                    child: const Icon(
+                                      Icons.event_available,
+                                      color: Colors.green,
                                       size: 24,
                                     ),
                                   ),
                                   title: Text(
-                                    leaveType['leaveTypeName'] ??
-                                        'Không có tên',
+                                    leaveType.leaveTypeName,
                                     style: const TextStyle(
                                       fontWeight: FontWeight.w600,
                                       fontSize: 16,
@@ -332,115 +324,11 @@ class _LeaveTypeManagementScreenState extends State<LeaveTypeManagementScreen> {
                                     children: [
                                       const SizedBox(height: 4),
                                       Text(
-                                        'Mã: ${leaveType['leaveTypeCode'] ?? 'N/A'}',
+                                        'Mã: ${leaveType.leaveTypeCode}',
                                         style: TextStyle(
                                           color: Colors.grey[600],
                                           fontSize: 14,
                                         ),
-                                      ),
-                                      if (leaveType['description'] != null &&
-                                          leaveType['description']
-                                              .isNotEmpty) ...[
-                                        const SizedBox(height: 4),
-                                        Text(
-                                          leaveType['description'],
-                                          style: TextStyle(
-                                            color: Colors.grey[500],
-                                            fontSize: 13,
-                                          ),
-                                          maxLines: 2,
-                                          overflow: TextOverflow.ellipsis,
-                                        ),
-                                      ],
-                                      const SizedBox(height: 8),
-                                      Wrap(
-                                        spacing: 6,
-                                        runSpacing: 4,
-                                        children: [
-                                          if (leaveType['requiresAttachment'] ==
-                                              true)
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: Colors.orange
-                                                    .withOpacity(0.1),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: Colors.orange
-                                                      .withOpacity(0.3),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                'Cần đính kèm',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.orange[700],
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          if (leaveType['deductsFromBalance'] ==
-                                              true)
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue.withOpacity(
-                                                  0.1,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: Colors.blue
-                                                      .withOpacity(0.3),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                'Trừ phép năm',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.blue[700],
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                          if (leaveType['isActive'] == false)
-                                            Container(
-                                              padding:
-                                                  const EdgeInsets.symmetric(
-                                                    horizontal: 8,
-                                                    vertical: 2,
-                                                  ),
-                                              decoration: BoxDecoration(
-                                                color: Colors.red.withOpacity(
-                                                  0.1,
-                                                ),
-                                                borderRadius:
-                                                    BorderRadius.circular(8),
-                                                border: Border.all(
-                                                  color: Colors.red.withOpacity(
-                                                    0.3,
-                                                  ),
-                                                ),
-                                              ),
-                                              child: Text(
-                                                'Không hoạt động',
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.red[700],
-                                                  fontWeight: FontWeight.w500,
-                                                ),
-                                              ),
-                                            ),
-                                        ],
                                       ),
                                     ],
                                   ),
