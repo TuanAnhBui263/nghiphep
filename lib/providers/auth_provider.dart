@@ -279,7 +279,7 @@ class AuthProvider extends ChangeNotifier {
   /// Tạo user mới
   Future<bool> createUser(Map<String, dynamic> userData) async {
     try {
-      await ApiService.createEmployee(userData);
+      await ApiService.createUser(userData);
       return true;
     } catch (e) {
       debugPrint('Error creating user: $e');

@@ -390,138 +390,13 @@ class ApiService {
 
   // ==================== LEAVE REQUEST METHODS ====================
 
-  /// Lấy danh sách yêu cầu nghỉ phép (có phân trang, tìm kiếm, lọc theo phòng ban)
-  static Future<Map<String, dynamic>> getLeaveRequests({
-    int pageNumber = 1,
-    int pageSize = 100,
-    int? userId,
-    String? status,
-    DateTime? startDateFrom,
-    DateTime? startDateTo,
-    int? departmentId,
-  }) async {
-    final queryParams = <String, String>{
-      'pageNumber': pageNumber.toString(),
-      'pageSize': pageSize.toString(),
-    };
-
-    if (userId != null) {
-      queryParams['userId'] = userId.toString();
-    }
-    if (status != null && status.isNotEmpty) {
-      queryParams['status'] = status;
-    }
-    if (startDateFrom != null) {
-      queryParams['startDateFrom'] = startDateFrom.toIso8601String();
-    }
-    if (startDateTo != null) {
-      queryParams['startDateTo'] = startDateTo.toIso8601String();
-    }
-    if (departmentId != null) {
-      queryParams['departmentId'] = departmentId.toString();
-    }
-
-    final uri = Uri.parse(
-      '$baseUrl/leaverequests',
-    ).replace(queryParameters: queryParams);
-
-    final response = await _makeRequest(
-      'GET',
-      uri.toString().replaceFirst(baseUrl, ''),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Không thể lấy danh sách yêu cầu nghỉ phép');
-    }
-  }
-
-  /// Lấy chi tiết yêu cầu nghỉ phép theo ID
-  static Future<Map<String, dynamic>> getLeaveRequestById(int id) async {
-    final response = await _makeRequest('GET', '/leaverequests/$id');
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else if (response.statusCode == 404) {
-      throw Exception('Không tìm thấy yêu cầu nghỉ phép');
-    } else if (response.statusCode == 403) {
-      throw Exception('Bạn không có quyền truy cập yêu cầu nghỉ phép này');
-    } else {
-      throw Exception('Không thể lấy thông tin yêu cầu nghỉ phép');
-    }
-  }
-
-  /// Lấy danh sách yêu cầu nghỉ phép của tôi
-  static Future<Map<String, dynamic>> getMyLeaveRequests({
-    int pageNumber = 1,
-    int pageSize = 10,
-  }) async {
-    final queryParams = <String, String>{
-      'pageNumber': pageNumber.toString(),
-      'pageSize': pageSize.toString(),
-    };
-
-    final uri = Uri.parse(
-      '$baseUrl/leaverequests/my-requests',
-    ).replace(queryParameters: queryParams);
-
-    final response = await _makeRequest(
-      'GET',
-      uri.toString().replaceFirst(baseUrl, ''),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Không thể lấy danh sách yêu cầu nghỉ phép');
-    }
-  }
-
-  /// Lấy danh sách yêu cầu cần duyệt
-  static Future<Map<String, dynamic>> getPendingApprovals({
-    int pageNumber = 1,
-    int pageSize = 10,
-  }) async {
-    final queryParams = <String, String>{
-      'pageNumber': pageNumber.toString(),
-      'pageSize': pageSize.toString(),
-    };
-
-    final uri = Uri.parse(
-      '$baseUrl/leaverequests/pending-approvals',
-    ).replace(queryParameters: queryParams);
-
-    final response = await _makeRequest(
-      'GET',
-      uri.toString().replaceFirst(baseUrl, ''),
-    );
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Không thể lấy danh sách yêu cầu cần duyệt');
-    }
-  }
-
-  /// Lấy thống kê yêu cầu nghỉ phép của tôi
-  static Future<Map<String, dynamic>> getMyStatistics() async {
-    final response = await _makeRequest('GET', '/leaverequests/my-statistics');
-
-    if (response.statusCode == 200) {
-      return jsonDecode(response.body);
-    } else {
-      throw Exception('Không thể lấy thống kê');
-    }
-  }
-
-  /// Tạo yêu cầu nghỉ phép mới
+  /// Tạo đơn xin nghỉ mới
   static Future<Map<String, dynamic>> createLeaveRequest(
     Map<String, dynamic> requestData,
   ) async {
     final response = await _makeRequest(
       'POST',
-      '/leaverequests',
+      '/api/leaverequests',
       body: requestData,
     );
 
@@ -531,92 +406,35 @@ class ApiService {
       final errorBody = jsonDecode(response.body);
       throw Exception(errorBody['message'] ?? 'Dữ liệu không hợp lệ');
     } else {
-      throw Exception('Không thể tạo yêu cầu nghỉ phép');
+      throw Exception('Không thể tạo đơn xin nghỉ');
     }
   }
 
-  /// Duyệt yêu cầu nghỉ phép
-  static Future<void> approveLeaveRequest(
-    int id,
-    Map<String, dynamic> approvalData,
-  ) async {
-    final response = await _makeRequest(
-      'POST',
-      '/leaverequests/$id/approve',
-      body: approvalData,
-    );
-
-    if (response.statusCode == 200) {
-      return;
-    } else if (response.statusCode == 400) {
-      final errorBody = jsonDecode(response.body);
-      throw Exception(
-        errorBody['message'] ?? 'Không thể duyệt yêu cầu nghỉ phép',
-      );
-    } else {
-      throw Exception('Không thể duyệt yêu cầu nghỉ phép');
-    }
-  }
-
-  /// Từ chối yêu cầu nghỉ phép
-  static Future<void> rejectLeaveRequest(
-    int id,
-    Map<String, dynamic> rejectionData,
-  ) async {
-    final response = await _makeRequest(
-      'POST',
-      '/leaverequests/$id/reject',
-      body: rejectionData,
-    );
-
-    if (response.statusCode == 200) {
-      return;
-    } else if (response.statusCode == 400) {
-      final errorBody = jsonDecode(response.body);
-      throw Exception(
-        errorBody['message'] ?? 'Không thể từ chối yêu cầu nghỉ phép',
-      );
-    } else {
-      throw Exception('Không thể từ chối yêu cầu nghỉ phép');
-    }
-  }
-
-  /// Hủy yêu cầu nghỉ phép
-  static Future<void> cancelLeaveRequest(int id) async {
-    final response = await _makeRequest('POST', '/leaverequests/$id/cancel');
-
-    if (response.statusCode == 200) {
-      return;
-    } else if (response.statusCode == 400) {
-      final errorBody = jsonDecode(response.body);
-      throw Exception(
-        errorBody['message'] ?? 'Không thể hủy yêu cầu nghỉ phép',
-      );
-    } else {
-      throw Exception('Không thể hủy yêu cầu nghỉ phép');
-    }
-  }
-
-  /// Lấy thống kê theo phòng ban
-  static Future<Map<String, dynamic>> getDepartmentStatistics({
-    int? departmentId,
-    DateTime? startDate,
-    DateTime? endDate,
+  /// Lấy danh sách đơn của tôi
+  static Future<Map<String, dynamic>> getMyLeaveRequests({
+    String? status,
+    int? month,
+    int? year,
+    int pageNumber = 1,
+    int pageSize = 20,
   }) async {
-    final queryParams = <String, String>{};
+    final queryParams = <String, String>{
+      'pageNumber': pageNumber.toString(),
+      'pageSize': pageSize.toString(),
+    };
 
-    if (departmentId != null) {
-      queryParams['departmentId'] = departmentId.toString();
+    if (status != null && status.isNotEmpty) {
+      queryParams['status'] = status;
     }
-    if (startDate != null) {
-      queryParams['startDate'] = startDate.toIso8601String();
+    if (month != null) {
+      queryParams['month'] = month.toString();
     }
-    if (endDate != null) {
-      queryParams['endDate'] = endDate.toIso8601String();
+    if (year != null) {
+      queryParams['year'] = year.toString();
     }
 
     final uri = Uri.parse(
-      '$baseUrl/leaverequests/department-statistics',
+      '$baseUrl/api/leaverequests/my-requests',
     ).replace(queryParameters: queryParams);
 
     final response = await _makeRequest(
@@ -627,7 +445,195 @@ class ApiService {
     if (response.statusCode == 200) {
       return jsonDecode(response.body);
     } else {
-      throw Exception('Không thể lấy thống kê phòng ban');
+      throw Exception('Không thể lấy danh sách đơn của tôi');
+    }
+  }
+
+  /// Lấy chi tiết đơn
+  static Future<Map<String, dynamic>> getLeaveRequestDetail(int id) async {
+    final response = await _makeRequest('GET', '/api/leaverequests/$id');
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 404) {
+      throw Exception('Không tìm thấy đơn xin nghỉ');
+    } else if (response.statusCode == 403) {
+      throw Exception('Bạn không có quyền truy cập đơn này');
+    } else {
+      throw Exception('Không thể lấy thông tin đơn xin nghỉ');
+    }
+  }
+
+  /// Hủy đơn
+  static Future<void> cancelLeaveRequest(int id) async {
+    final response = await _makeRequest('POST', '/api/leaverequests/$id/cancel');
+
+    if (response.statusCode == 200) {
+      return;
+    } else if (response.statusCode == 400) {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(
+        errorBody['message'] ?? 'Không thể hủy đơn',
+      );
+    } else {
+      throw Exception('Không thể hủy đơn');
+    }
+  }
+
+  /// Lấy đơn chờ duyệt (Manager/Admin)
+  static Future<Map<String, dynamic>> getPendingApprovals({
+    String? employeeName,
+    int? leaveTypeId,
+    DateTime? startDateFrom,
+    DateTime? startDateTo,
+    String? sortBy,
+    String? sortDirection,
+    int pageNumber = 1,
+    int pageSize = 20,
+  }) async {
+    final queryParams = <String, String>{
+      'pageNumber': pageNumber.toString(),
+      'pageSize': pageSize.toString(),
+    };
+
+    if (employeeName != null && employeeName.isNotEmpty) {
+      queryParams['employeeName'] = employeeName;
+    }
+    if (leaveTypeId != null) {
+      queryParams['leaveTypeId'] = leaveTypeId.toString();
+    }
+    if (startDateFrom != null) {
+      queryParams['startDateFrom'] = startDateFrom.toIso8601String().split('T')[0];
+    }
+    if (startDateTo != null) {
+      queryParams['startDateTo'] = startDateTo.toIso8601String().split('T')[0];
+    }
+    if (sortBy != null && sortBy.isNotEmpty) {
+      queryParams['sortBy'] = sortBy;
+    }
+    if (sortDirection != null && sortDirection.isNotEmpty) {
+      queryParams['sortDirection'] = sortDirection;
+    }
+
+    final uri = Uri.parse(
+      '$baseUrl/api/leaverequests/pending-approvals',
+    ).replace(queryParameters: queryParams);
+
+    final response = await _makeRequest(
+      'GET',
+      uri.toString().replaceFirst(baseUrl, ''),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Không thể lấy danh sách đơn chờ duyệt');
+    }
+  }
+
+  /// Duyệt đơn (Manager/Admin)
+  static Future<Map<String, dynamic>> approveLeaveRequest(
+    int id,
+    String? comments,
+  ) async {
+    final response = await _makeRequest(
+      'POST',
+      '/api/leaverequests/$id/approve',
+      body: {'comments': comments ?? ''},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 400) {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(
+        errorBody['message'] ?? 'Không thể duyệt đơn',
+      );
+    } else {
+      throw Exception('Không thể duyệt đơn');
+    }
+  }
+
+  /// Từ chối đơn (Manager/Admin)
+  static Future<Map<String, dynamic>> rejectLeaveRequest(
+    int id,
+    String comments,
+  ) async {
+    if (comments.isEmpty) {
+      throw Exception('Vui lòng nhập lý do từ chối');
+    }
+
+    final response = await _makeRequest(
+      'POST',
+      '/api/leaverequests/$id/reject',
+      body: {'comments': comments},
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 400) {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(
+        errorBody['message'] ?? 'Không thể từ chối đơn',
+      );
+    } else {
+      throw Exception('Không thể từ chối đơn');
+    }
+  }
+
+  /// Lấy thống kê cá nhân
+  static Future<Map<String, dynamic>> getMyStatistics({int? year}) async {
+    final queryParams = <String, String>{};
+
+    if (year != null) {
+      queryParams['year'] = year.toString();
+    }
+
+    final uri = Uri.parse(
+      '$baseUrl/api/leaverequests/my-statistics',
+    ).replace(queryParameters: queryParams);
+
+    final response = await _makeRequest(
+      'GET',
+      uri.toString().replaceFirst(baseUrl, ''),
+    );
+
+    if (response.statusCode == 200) {
+      return jsonDecode(response.body);
+    } else {
+      throw Exception('Không thể lấy thống kê');
+    }
+  }
+
+  /// Lấy loại nghỉ phép
+  static Future<List<Map<String, dynamic>>> getLeaveTypes() async {
+    final response = await _makeRequest('GET', '/api/leaverequests/leave-types');
+
+    if (response.statusCode == 200) {
+      final data = jsonDecode(response.body);
+      return List<Map<String, dynamic>>.from(data);
+    } else {
+      throw Exception('Không thể lấy danh sách loại nghỉ phép');
+    }
+  }
+
+  /// Tạo nhân viên mới (User Registration)
+  static Future<Map<String, dynamic>> createUser(
+    Map<String, dynamic> userData,
+  ) async {
+    final response = await _makeRequest(
+      'POST',
+      '/api/auth/register',
+      body: userData,
+    );
+
+    if (response.statusCode == 201) {
+      return jsonDecode(response.body);
+    } else if (response.statusCode == 400) {
+      final errorBody = jsonDecode(response.body);
+      throw Exception(errorBody['message'] ?? 'Dữ liệu không hợp lệ');
+    } else {
+      throw Exception('Không thể tạo người dùng');
     }
   }
 
@@ -1038,3 +1044,5 @@ class ApiService {
     }
   }
 }
+
+
